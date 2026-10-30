@@ -529,8 +529,8 @@ fun ActiveTimerSessionScreen(
                 if (snapshot.isAwaitingContinue) {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterHorizontally
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         PrimaryFlowButton(
                             text = "Continue Working in Flow (No Extension Needed)",
