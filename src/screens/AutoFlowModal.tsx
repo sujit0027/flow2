@@ -95,27 +95,165 @@ export const AutoFlowModal: React.FC<AutoFlowModalProps> = ({ isOpen, onClose })
             </div>
           </div>
 
-          {/* Ring Alarm on Expiry */}
-          <div className="flex items-center justify-between p-3.5 rounded-xl bg-[#1C2420] border border-[#25332B]">
-            <div className="pr-2">
-              <h4 className="text-xs font-bold text-[#F3F7F5]">
-                Ring Wake-Up Alarm on Countdown Expiry
-              </h4>
-              <p className="text-[11px] text-[#98ABA1] mt-0.5">
-                Emits energetic audio alarm to resume study if break times out
-              </p>
+          {/* Wake-Up Alarm Mode Selector */}
+          <div className="p-3.5 rounded-xl bg-[#1C2420] border border-[#25332B] space-y-2.5">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-[#F3F7F5]">
+                Wake-Up Alarm Behavior (30s Gap Action)
+              </span>
             </div>
-            <input
-              type="checkbox"
-              checked={autoFlowConfig.ringAlarmOnCountdownExpiry}
-              onChange={(e) =>
-                updateAutoFlowConfig({
-                  ...autoFlowConfig,
-                  ringAlarmOnCountdownExpiry: e.target.checked,
-                })
-              }
-              className="w-4 h-4 accent-[#10B981] rounded cursor-pointer shrink-0"
-            />
+            <p className="text-[11px] text-[#98ABA1]">
+              Jab task finish hone par 30s tak continue na dabayein:
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { key: 'ALARM', label: '🔊 Loud Alarm', desc: 'Rings audio tone' },
+                { key: 'VIBRATION_ONLY', label: '📳 Vibration Only', desc: 'Silent pulsing alerts' },
+                { key: 'OVERTIME_AUTO', label: '⚡ Auto-Overtime', desc: 'Flow continue without alarm' },
+                { key: 'AUTO_NEXT_COMPULSORY', label: '⏭️ Jump Compulsory', desc: 'Auto-starts next task' },
+              ].map((mode) => {
+                const isSelected = (autoFlowConfig.wakeAlarmMode || 'ALARM') === mode.key;
+                return (
+                  <button
+                    key={mode.key}
+                    onClick={() =>
+                      updateAutoFlowConfig({
+                        ...autoFlowConfig,
+                        wakeAlarmMode: mode.key as any,
+                        enableWakeAlarm: mode.key === 'ALARM' || mode.key === 'VIBRATION_ONLY',
+                      })
+                    }
+                    className={`p-2.5 rounded-xl text-left border transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-[#10B981]/20 border-[#10B981] text-[#34D399]'
+                        : 'bg-[#131916] border-[#25332B] text-[#98ABA1] hover:text-[#F3F7F5]'
+                    }`}
+                  >
+                    <div className="text-xs font-bold">{mode.label}</div>
+                    <div className="text-[10px] text-[#64756B] mt-0.5">{mode.desc}</div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Wake Alarm Duration Picker (Longer for waking up) */}
+          <div className="p-3.5 rounded-xl bg-[#1C2420] border border-[#25332B] space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-[#F3F7F5]">
+                Wake-Up Alarm Duration
+              </span>
+              <span className="font-mono-digits text-[#34D399] font-bold">
+                {autoFlowConfig.wakeAlarmDurationSeconds || 30}s
+              </span>
+            </div>
+            <p className="text-[11px] text-[#98ABA1]">
+              Wake up alarm kitni der tak bajta rahega (soye hue user ko jagane ke liye):
+            </p>
+            <div className="grid grid-cols-4 gap-1.5">
+              {[15, 30, 45, 60, 90, 120].map((secs) => {
+                const isSelected = (autoFlowConfig.wakeAlarmDurationSeconds || 30) === secs;
+                return (
+                  <button
+                    key={secs}
+                    onClick={() =>
+                      updateAutoFlowConfig({
+                        ...autoFlowConfig,
+                        wakeAlarmDurationSeconds: secs,
+                      })
+                    }
+                    className={`py-1.5 rounded-lg text-xs font-bold border transition-colors cursor-pointer ${
+                      isSelected
+                        ? 'bg-[#10B981] text-black border-[#10B981]'
+                        : 'bg-[#131916] text-[#98ABA1] border-[#25332B] hover:text-[#F3F7F5]'
+                    }`}
+                  >
+                    {secs}s
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Transition Auto-Start Alert Duration */}
+          <div className="p-3.5 rounded-xl bg-[#1C2420] border border-[#25332B] space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-[#F3F7F5]">
+                Next Task Auto-Start Alert Duration
+              </span>
+              <span className="font-mono-digits text-[#34D399] font-bold">
+                {autoFlowConfig.transitionAlarmDurationSeconds || 20}s
+              </span>
+            </div>
+            <div className="grid grid-cols-4 gap-1.5">
+              {[10, 20, 30, 45].map((secs) => {
+                const isSelected = (autoFlowConfig.transitionAlarmDurationSeconds || 20) === secs;
+                return (
+                  <button
+                    key={secs}
+                    onClick={() =>
+                      updateAutoFlowConfig({
+                        ...autoFlowConfig,
+                        transitionAlarmDurationSeconds: secs,
+                      })
+                    }
+                    className={`py-1.5 rounded-lg text-xs font-bold border transition-colors cursor-pointer ${
+                      isSelected
+                        ? 'bg-[#10B981] text-black border-[#10B981]'
+                        : 'bg-[#131916] text-[#98ABA1] border-[#25332B] hover:text-[#F3F7F5]'
+                    }`}
+                  >
+                    {secs}s
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Motivation & All Tasks Completed Celebration Screen Settings */}
+          <div className="p-3.5 rounded-xl bg-[#1C2420] border border-[#25332B] space-y-2.5">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-[#F3F7F5]">
+                🎉 All Compulsory Tasks Completed Screen
+              </span>
+            </div>
+            <p className="text-[11px] text-[#98ABA1]">
+              Saare compulsory study tasks poore hone par motivation screen show hoga:
+            </p>
+            <div>
+              <label className="block text-[10px] text-[#98ABA1] uppercase font-bold mb-1">
+                Motivational Message / Quote
+              </label>
+              <input
+                type="text"
+                value={autoFlowConfig.celebrationMessage || ''}
+                onChange={(e) =>
+                  updateAutoFlowConfig({
+                    ...autoFlowConfig,
+                    celebrationMessage: e.target.value,
+                  })
+                }
+                placeholder="e.g. Sensational effort! You crushed all compulsory study tasks today."
+                className="w-full px-3 py-1.5 rounded-lg bg-[#131916] border border-[#25332B] text-xs text-[#F3F7F5] focus:outline-none focus:border-[#10B981]"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-[#98ABA1] uppercase font-bold mb-1">
+                Celebration Wallpaper Image URL (Optional)
+              </label>
+              <input
+                type="text"
+                value={autoFlowConfig.celebrationWallpaperUri || ''}
+                onChange={(e) =>
+                  updateAutoFlowConfig({
+                    ...autoFlowConfig,
+                    celebrationWallpaperUri: e.target.value,
+                  })
+                }
+                placeholder="https://images.unsplash.com/photo-..."
+                className="w-full px-3 py-1.5 rounded-lg bg-[#131916] border border-[#25332B] text-xs text-[#F3F7F5] focus:outline-none focus:border-[#10B981]"
+              />
+            </div>
           </div>
 
           {/* Test Alarm Tone Button */}

@@ -14,11 +14,13 @@ import { formatDurationHMS, formatMinutesHuman } from '../utils/storage';
 interface HomeScreenProps {
   onOpenWallpaperSettings: () => void;
   onOpenFocusCustomization: () => void;
+  onOpenCelebrationModal?: () => void;
 }
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({
   onOpenWallpaperSettings,
   onOpenFocusCustomization,
+  onOpenCelebrationModal,
 }) => {
   const {
     tasks,
@@ -197,14 +199,23 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           </button>
         </div>
       ) : tasks.length > 0 ? (
-        <div className="p-6 rounded-2xl bg-[#131916]/95 border border-[#10B981] text-center space-y-2 backdrop-blur-md">
+        <div className="p-6 rounded-2xl bg-[#131916]/95 border border-[#10B981] text-center space-y-3 backdrop-blur-md shadow-xl">
           <div className="w-12 h-12 mx-auto rounded-full bg-[#132F23] flex items-center justify-center text-[#34D399]">
             <CheckCircle2 className="w-7 h-7" />
           </div>
-          <h3 className="text-lg font-bold text-[#F3F7F5]">Daily Routine Completed!</h3>
+          <h3 className="text-lg font-bold text-[#F3F7F5]">Daily Compulsory Routine Completed!</h3>
           <p className="text-xs text-[#98ABA1] max-w-xs mx-auto">
-            All planned flexible study tasks have been fulfilled.
+            All planned compulsory study tasks have been fulfilled with excellence.
           </p>
+          {onOpenCelebrationModal && (
+            <button
+              onClick={onOpenCelebrationModal}
+              data-testid="home_open_celebration_button"
+              className="px-4 py-2 rounded-xl bg-[#10B981] hover:bg-[#34D399] text-black font-bold text-xs shadow-lg transition-all cursor-pointer inline-flex items-center space-x-1.5"
+            >
+              <span>🎉 View Motivation & Celebration Screen</span>
+            </button>
+          )}
         </div>
       ) : null}
 

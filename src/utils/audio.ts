@@ -148,28 +148,48 @@ export function triggerVibration(pattern: number | number[] = [200, 100, 200]): 
 }
 
 let wakeAlarmIntervalId: number | null = null;
+let wakeAlarmTimeoutId: number | null = null;
 let isAlarmActive = false;
 
 export function isWakeAlarmActive(): boolean {
   return isAlarmActive;
 }
 
-export function startWakeAlarm(toneId: string = 'digital_alarm'): void {
+export function startWakeAlarm(
+  toneId: string = 'digital_alarm',
+  durationSeconds: number = 30,
+  vibrationOnly: boolean = false,
+  onExpire?: () => void
+): void {
   stopWakeAlarm();
   isAlarmActive = true;
-  // Play sound immediately
-  playSynthesizedTone(toneId);
+
+  if (!vibrationOnly) {
+    playSynthesizedTone(toneId);
+  }
   triggerVibration([500, 200, 500, 200, 500]);
 
-  // Repeat every 2 seconds
+  // Repeat sound/vibration every 2 seconds
   wakeAlarmIntervalId = window.setInterval(() => {
     if (!isAlarmActive) {
       stopWakeAlarm();
       return;
     }
-    playSynthesizedTone(toneId);
+    if (!vibrationOnly) {
+      playSynthesizedTone(toneId);
+    }
     triggerVibration([400, 150, 400]);
   }, 2000);
+
+  // Auto-stop after customized durationSeconds (e.g. 30s, 60s, 90s, 120s)
+  if (durationSeconds > 0) {
+    wakeAlarmTimeoutId = window.setTimeout(() => {
+      stopWakeAlarm();
+      if (onExpire) {
+        onExpire();
+      }
+    }, durationSeconds * 1000);
+  }
 }
 
 export function stopWakeAlarm(): void {
@@ -177,6 +197,10 @@ export function stopWakeAlarm(): void {
   if (wakeAlarmIntervalId !== null) {
     clearInterval(wakeAlarmIntervalId);
     wakeAlarmIntervalId = null;
+  }
+  if (wakeAlarmTimeoutId !== null) {
+    clearTimeout(wakeAlarmTimeoutId);
+    wakeAlarmTimeoutId = null;
   }
 }
 

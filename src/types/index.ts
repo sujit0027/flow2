@@ -169,6 +169,13 @@ export interface AutoFlowConfig {
   alertOnSkippedTask: boolean;
   notifyNextTaskMinutes: number;
   autoStartNextTask: boolean;
+  wakeAlarmDurationSeconds: number; // Duration wake alarm sounds before stopping or auto-action
+  transitionAlarmDurationSeconds: number; // Transition alarm ring duration
+  wakeAlarmMode: 'ALARM' | 'VIBRATION_ONLY' | 'OVERTIME_AUTO' | 'AUTO_NEXT_COMPULSORY'; // Alarm vs vibration vs silent auto flow vs jump next
+  enableWakeAlarm: boolean;
+  celebrationWallpaperUri: string;
+  celebrationMessage: string;
+  celebrationShowQuote: boolean;
 }
 
 export interface SoundRingtoneConfig {

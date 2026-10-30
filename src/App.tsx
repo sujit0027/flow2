@@ -17,6 +17,7 @@ import { WallpaperSettingsModal } from './screens/WallpaperSettingsModal';
 import { AppBlockerModal } from './screens/AppBlockerModal';
 import { SoundRingtoneModal } from './screens/SoundRingtoneModal';
 import { AutoFlowModal } from './screens/AutoFlowModal';
+import { CompulsoryCelebrationModal } from './components/CompulsoryCelebrationModal';
 
 const AppContent: React.FC = () => {
   const {
@@ -50,6 +51,7 @@ const AppContent: React.FC = () => {
   const [isAppBlockerOpen, setIsAppBlockerOpen] = useState(false);
   const [isSoundSettingsOpen, setIsSoundSettingsOpen] = useState(false);
   const [isAutoFlowSettingsOpen, setIsAutoFlowSettingsOpen] = useState(false);
+  const [isCelebrationOpen, setIsCelebrationOpen] = useState(false);
 
   // If first-time user, render Onboarding
   if (!themeConfig.isOnboardingCompleted) {
@@ -72,6 +74,7 @@ const AppContent: React.FC = () => {
           <HomeScreen
             onOpenWallpaperSettings={() => setIsWallpaperSettingsOpen(true)}
             onOpenFocusCustomization={() => setIsFocusCustomizationOpen(true)}
+            onOpenCelebrationModal={() => setIsCelebrationOpen(true)}
           />
         )}
         {currentTab === 'ROUTINE' && <RoutineScreen />}
@@ -152,6 +155,15 @@ const AppContent: React.FC = () => {
       <AutoFlowModal
         isOpen={isAutoFlowSettingsOpen}
         onClose={() => setIsAutoFlowSettingsOpen(false)}
+      />
+
+      <CompulsoryCelebrationModal
+        isOpen={isCelebrationOpen}
+        onClose={() => setIsCelebrationOpen(false)}
+        onOpenSettings={() => {
+          setIsCelebrationOpen(false);
+          setIsAutoFlowSettingsOpen(true);
+        }}
       />
     </div>
   );

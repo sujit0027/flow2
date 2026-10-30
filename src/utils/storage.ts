@@ -500,6 +500,13 @@ export const DEFAULT_AUTO_FLOW_CONFIG: AutoFlowConfig = {
   alertOnSkippedTask: true,
   notifyNextTaskMinutes: 1,
   autoStartNextTask: false,
+  wakeAlarmDurationSeconds: 30, // 30s customizable wake alarm duration
+  transitionAlarmDurationSeconds: 20, // 20s transition alert
+  wakeAlarmMode: 'ALARM', // 'ALARM' | 'VIBRATION_ONLY' | 'OVERTIME_AUTO' | 'AUTO_NEXT_COMPULSORY'
+  enableWakeAlarm: true,
+  celebrationWallpaperUri: '',
+  celebrationMessage: 'Sensational effort! You crushed all compulsory study tasks today.',
+  celebrationShowQuote: true,
 };
 
 export const DEFAULT_SOUND_CONFIG: SoundRingtoneConfig = {

@@ -303,9 +303,44 @@ export const FlowStudyProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         if (prev.isAwaitingContinue && !prev.hasContinuedIntoFlow) {
           const currentSecondsLeft = prev.awaitingContinueSecondsLeft ?? 30;
           if (currentSecondsLeft <= 1) {
-            // 30 seconds expired without clicking continue or finish! Start wake alarm
+            // 30 seconds expired without clicking continue or finish!
+            const mode = autoFlowConfig.wakeAlarmMode || 'ALARM';
+
+            if (mode === 'OVERTIME_AUTO') {
+              // Silently activate overtime in flow without sounding alarm
+              return {
+                ...prev,
+                isAwaitingContinue: false,
+                hasContinuedIntoFlow: true,
+                stintStartTimestamp: Date.now(),
+                awaitingContinueSecondsLeft: 0,
+                isWakeAlarmRinging: false,
+              };
+            }
+
+            if (mode === 'AUTO_NEXT_COMPULSORY') {
+              // Automatically jump to next compulsory task
+              setTimeout(() => {
+                const remaining = tasks.filter((t) => t.id !== prev.taskId && !t.isCompleted);
+                const nextComp = remaining.find((t) => t.isCompulsory) || remaining[0];
+                if (nextComp) {
+                  startFocusSession(nextComp);
+                } else {
+                  finishTaskAndReturnHome();
+                }
+              }, 100);
+              return {
+                ...prev,
+                isAwaitingContinue: false,
+                awaitingContinueSecondsLeft: 0,
+              };
+            }
+
+            // Otherwise, ALARM or VIBRATION_ONLY mode:
             if (!prev.isWakeAlarmRinging) {
-              startWakeAlarm();
+              const durationSecs = autoFlowConfig.wakeAlarmDurationSeconds || 30;
+              const vibrationOnly = mode === 'VIBRATION_ONLY';
+              startWakeAlarm('digital_alarm', durationSecs, vibrationOnly);
             }
             return {
               ...prev,
