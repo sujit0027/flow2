@@ -359,6 +359,8 @@ fun TaskEditBottomSheet(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 listOf(
+                    1 to "1m",
+                    5 to "5m",
                     15 to "15m",
                     25 to "25m",
                     30 to "30m",
@@ -446,7 +448,7 @@ fun TaskEditBottomSheet(
                                     onClick = {
                                         if (currentHours > 0) {
                                             val newTotal = (currentHours - 1) * 60 + currentMins
-                                            minDuration = newTotal.coerceAtLeast(5)
+                                            minDuration = newTotal.coerceAtLeast(1)
                                         }
                                     },
                                     modifier = Modifier.size(28.dp).testTag("decrement_hours_button"),
@@ -509,15 +511,15 @@ fun TaskEditBottomSheet(
                             ) {
                                 IconButton(
                                     onClick = {
-                                        val newMins = (currentMins - 5).coerceAtLeast(0)
+                                        val newMins = (currentMins - 1).coerceAtLeast(0)
                                         val newTotal = currentHours * 60 + newMins
-                                        minDuration = newTotal.coerceAtLeast(5)
+                                        minDuration = newTotal.coerceAtLeast(1)
                                     },
                                     modifier = Modifier.size(28.dp).testTag("decrement_minutes_button")
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Remove,
-                                        contentDescription = "Minus 5 Minutes",
+                                        contentDescription = "Minus 1 Minute",
                                         tint = TextPrimary,
                                         modifier = Modifier.size(16.dp)
                                     )
@@ -532,16 +534,16 @@ fun TaskEditBottomSheet(
 
                                 IconButton(
                                     onClick = {
-                                        val newMins = if (currentMins + 5 >= 60) 0 else currentMins + 5
-                                        val addHours = if (currentMins + 5 >= 60) 1 else 0
+                                        val newMins = if (currentMins + 1 >= 60) 0 else currentMins + 1
+                                        val addHours = if (currentMins + 1 >= 60) 1 else 0
                                         val newTotal = (currentHours + addHours) * 60 + newMins
-                                        minDuration = newTotal.coerceAtLeast(5)
+                                        minDuration = newTotal.coerceAtLeast(1)
                                     },
                                     modifier = Modifier.size(28.dp).testTag("increment_minutes_button")
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Add,
-                                        contentDescription = "Plus 5 Minutes",
+                                        contentDescription = "Plus 1 Minute",
                                         tint = TextPrimary,
                                         modifier = Modifier.size(16.dp)
                                     )

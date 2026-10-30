@@ -110,6 +110,7 @@ fun ActiveTimerSessionScreen(
     onSkipTask: () -> Unit,
     onMinimize: () -> Unit,
     onHideForLecture: () -> Unit = {},
+    onContinueInFlow: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -524,34 +525,92 @@ fun ActiveTimerSessionScreen(
                     }
                 }
 
-                // Action Buttons: Finish Task vs Emergency Stop
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    // Emergency Stop / Incomplete Exit
-                    SecondaryFlowButton(
-                        text = "Stop / Exit",
-                        onClick = { showEmergencyStopDialog = true },
-                        modifier = Modifier.weight(0.4f),
-                        testTag = "timer_emergency_stop_button"
-                    )
+                // When minimum is reached and awaiting user action (with 30s countdown before wake alarm)
+                if (snapshot.isAwaitingContinue) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        PrimaryFlowButton(
+                            text = "Continue Working in Flow (No Extension Needed)",
+                            onClick = onContinueInFlow,
+                            modifier = Modifier.fillMaxWidth(),
+                            icon = Icons.Default.FastForward,
+                            testTag = "timer_continue_flow_button"
+                        )
 
-                    // Finish Task (Enabled only after minimum is reached for compulsory tasks)
-                    PrimaryFlowButton(
-                        text = if (isMinCompleted) "Finish Task" else "Finish (Min ${formatMinutesHuman((snapshot.minDurationSeconds / 60).toInt())})",
-                        onClick = {
-                            if (isMinCompleted || !snapshot.isCompulsory) {
-                                onFinishTask(PostTaskChoice.JUST_FINISH)
-                            } else {
-                                showEmergencyStopDialog = true
-                            }
-                        },
-                        enabled = isMinCompleted || !snapshot.isCompulsory,
-                        modifier = Modifier.weight(0.6f),
-                        icon = Icons.Default.Check,
-                        testTag = "timer_finish_button"
-                    )
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            SecondaryFlowButton(
+                                text = "Stop / Exit",
+                                onClick = { showEmergencyStopDialog = true },
+                                modifier = Modifier.weight(0.4f),
+                                testTag = "timer_emergency_stop_button"
+                            )
+
+                            PrimaryFlowButton(
+                                text = "Finish Task →",
+                                onClick = { onFinishTask(PostTaskChoice.JUST_FINISH) },
+                                modifier = Modifier.weight(0.6f),
+                                icon = Icons.Default.Check,
+                                testTag = "timer_finish_button"
+                            )
+                        }
+
+                        if (snapshot.awaitingContinueSecondsLeft > 0 && !snapshot.isWakeAlarmRinging) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Wake alarm in ${snapshot.awaitingContinueSecondsLeft}s if no action taken",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = WarningAmber,
+                                fontSize = 11.sp
+                            )
+                        } else if (snapshot.isWakeAlarmRinging) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "⚠️ Wake alarm ringing! Tap Continue or Finish",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = WarningAmber,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.sp
+                            )
+                        }
+                    }
+                } else {
+                    // Action Buttons: Finish Task vs Emergency Stop
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        // Emergency Stop / Incomplete Exit
+                        SecondaryFlowButton(
+                            text = "Stop / Exit",
+                            onClick = { showEmergencyStopDialog = true },
+                            modifier = Modifier.weight(0.4f),
+                            testTag = "timer_emergency_stop_button"
+                        )
+
+                        // Finish Task (Enabled only after minimum is reached for compulsory tasks)
+                        PrimaryFlowButton(
+                            text = if (isMinCompleted || snapshot.hasContinuedIntoFlow) "Finish Task" else "Finish (Min ${formatMinutesHuman((snapshot.minDurationSeconds / 60).toInt())})",
+                            onClick = {
+                                if (isMinCompleted || snapshot.hasContinuedIntoFlow || !snapshot.isCompulsory) {
+                                    onFinishTask(PostTaskChoice.JUST_FINISH)
+                                } else {
+                                    showEmergencyStopDialog = true
+                                }
+                            },
+                            enabled = isMinCompleted || snapshot.hasContinuedIntoFlow || !snapshot.isCompulsory,
+                            modifier = Modifier.weight(0.6f),
+                            icon = Icons.Default.Check,
+                            testTag = "timer_finish_button"
+                        )
+                    }
                 }
             }
         }

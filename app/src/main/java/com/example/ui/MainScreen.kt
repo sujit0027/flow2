@@ -347,7 +347,8 @@ fun MainScreen(
                     onEmergencyStop = { viewModel.emergencyStopSession() },
                     onSkipTask = { viewModel.skipCurrentTask() },
                     onMinimize = { viewModel.closeActiveTimerScreen() },
-                    onHideForLecture = { viewModel.minimizeTimerScreen(hideCompletely = true) }
+                    onHideForLecture = { viewModel.minimizeTimerScreen(hideCompletely = true) },
+                    onContinueInFlow = { viewModel.continueInFlow() }
                 )
             }
 

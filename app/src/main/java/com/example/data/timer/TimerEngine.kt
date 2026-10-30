@@ -29,7 +29,11 @@ data class TimerSessionSnapshot(
     val currentElapsedSeconds: Long = 0L,
     val isMinCompleted: Boolean = false,
     val remainingCompulsorySeconds: Long = 0L,
-    val flowOvertimeSeconds: Long = 0L
+    val flowOvertimeSeconds: Long = 0L,
+    val isAwaitingContinue: Boolean = false,
+    val awaitingContinueSecondsLeft: Int = 30,
+    val isWakeAlarmRinging: Boolean = false,
+    val hasContinuedIntoFlow: Boolean = false
 )
 
 class TimerEngine private constructor(context: Context) {
@@ -151,6 +155,40 @@ class TimerEngine private constructor(context: Context) {
         _snapshot.value = restoreSnapshot()
     }
 
+    fun continueInFlow() {
+        val current = _snapshot.value
+        if (current.taskId != 0L) {
+            val nowElapsed = SystemClock.elapsedRealtime()
+            val nowWall = System.currentTimeMillis()
+            val bootTime = nowWall - nowElapsed
+            val baseSeconds = if (current.currentElapsedSeconds >= current.minDurationSeconds) {
+                current.currentElapsedSeconds
+            } else {
+                current.minDurationSeconds
+            }
+
+            prefs.edit()
+                .putBoolean(KEY_IS_RUNNING, true)
+                .putBoolean(KEY_IS_AWAITING_CONTINUE, false)
+                .putBoolean(KEY_HAS_CONTINUED_INTO_FLOW, true)
+                .putBoolean(KEY_IS_WAKE_ALARM_RINGING, false)
+                .putInt(KEY_AWAITING_SECONDS_LEFT, 30)
+                .putLong(KEY_ACCUMULATED_ACTIVE_SECONDS, baseSeconds)
+                .putLong(KEY_STINT_START_ELAPSED, nowElapsed)
+                .putLong(KEY_STINT_START_WALL, nowWall)
+                .putLong(KEY_BOOT_TIME, bootTime)
+                .apply()
+
+            updateSnapshot()
+            startTicker()
+        }
+    }
+
+    fun silenceWakeAlarm() {
+        prefs.edit().putBoolean(KEY_IS_WAKE_ALARM_RINGING, false).apply()
+        updateSnapshot()
+    }
+
     private fun restoreSnapshot(): TimerSessionSnapshot {
         val taskId = prefs.getLong(KEY_TASK_ID, 0L)
         if (taskId == 0L) {
@@ -165,11 +203,40 @@ class TimerEngine private constructor(context: Context) {
         val extSecs = prefs.getLong(KEY_EXTENSION_TARGET_SECONDS, 0L)
         val isCompulsory = prefs.getBoolean(KEY_IS_COMPULSORY, true)
         val isRunning = prefs.getBoolean(KEY_IS_RUNNING, false)
+        val hasContinued = prefs.getBoolean(KEY_HAS_CONTINUED_INTO_FLOW, false)
+        var isAwaiting = prefs.getBoolean(KEY_IS_AWAITING_CONTINUE, false)
+        var awaitingLeft = prefs.getInt(KEY_AWAITING_SECONDS_LEFT, 30)
+        var isAlarmRinging = prefs.getBoolean(KEY_IS_WAKE_ALARM_RINGING, false)
 
-        val elapsed = calculateElapsedFromPrefs()
-        val isMinCompleted = elapsed >= minSecs && minSecs > 0
-        val remaining = (minSecs - elapsed).coerceAtLeast(0L)
-        val overtime = (elapsed - minSecs).coerceAtLeast(0L)
+        val rawElapsed = calculateElapsedFromPrefs()
+        val isMinCompleted = rawElapsed >= minSecs && minSecs > 0
+
+        // If min reached and hasn't continued into flow yet, trigger awaiting continue state
+        if (isMinCompleted && !hasContinued && !isAwaiting && isCompulsory) {
+            isAwaiting = true
+            awaitingLeft = 30
+            val reachedTimestamp = System.currentTimeMillis()
+            prefs.edit()
+                .putBoolean(KEY_IS_AWAITING_CONTINUE, true)
+                .putInt(KEY_AWAITING_SECONDS_LEFT, 30)
+                .putLong(KEY_TARGET_REACHED_TIMESTAMP, reachedTimestamp)
+                .apply()
+        }
+
+        if (isAwaiting && !hasContinued) {
+            val reachedTime = prefs.getLong(KEY_TARGET_REACHED_TIMESTAMP, System.currentTimeMillis())
+            val secondsSinceReached = ((System.currentTimeMillis() - reachedTime) / 1000L).toInt()
+            val remainingAwait = (30 - secondsSinceReached).coerceAtLeast(0)
+            awaitingLeft = remainingAwait
+            if (remainingAwait == 0 && !isAlarmRinging) {
+                isAlarmRinging = true
+                prefs.edit().putBoolean(KEY_IS_WAKE_ALARM_RINGING, true).apply()
+            }
+        }
+
+        val displayElapsed = if (isAwaiting && !hasContinued) minSecs else rawElapsed
+        val remaining = (minSecs - displayElapsed).coerceAtLeast(0L)
+        val overtime = (displayElapsed - minSecs).coerceAtLeast(0L)
 
         return TimerSessionSnapshot(
             taskId = taskId,
@@ -181,10 +248,14 @@ class TimerEngine private constructor(context: Context) {
             isCompulsory = isCompulsory,
             isRunning = isRunning,
             accumulatedActiveSeconds = prefs.getLong(KEY_ACCUMULATED_ACTIVE_SECONDS, 0L),
-            currentElapsedSeconds = elapsed,
+            currentElapsedSeconds = displayElapsed,
             isMinCompleted = isMinCompleted,
             remainingCompulsorySeconds = remaining,
-            flowOvertimeSeconds = overtime
+            flowOvertimeSeconds = overtime,
+            isAwaitingContinue = isAwaiting,
+            awaitingContinueSecondsLeft = awaitingLeft,
+            isWakeAlarmRinging = isAlarmRinging,
+            hasContinuedIntoFlow = hasContinued
         )
     }
 
@@ -219,6 +290,11 @@ class TimerEngine private constructor(context: Context) {
         private const val KEY_STINT_START_ELAPSED = "stint_start_elapsed"
         private const val KEY_STINT_START_WALL = "stint_start_wall"
         private const val KEY_BOOT_TIME = "boot_time"
+        private const val KEY_IS_AWAITING_CONTINUE = "is_awaiting_continue"
+        private const val KEY_AWAITING_SECONDS_LEFT = "awaiting_seconds_left"
+        private const val KEY_TARGET_REACHED_TIMESTAMP = "target_reached_timestamp"
+        private const val KEY_IS_WAKE_ALARM_RINGING = "is_wake_alarm_ringing"
+        private const val KEY_HAS_CONTINUED_INTO_FLOW = "has_continued_into_flow"
 
         @Volatile
         private var INSTANCE: TimerEngine? = null

@@ -224,6 +224,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun continueInFlow() {
+        timerEngine.continueInFlow()
+        TimerForegroundService.start(getApplication())
+        _snackMessage.value = "⚡ Flow continuing! No extension needed — study as long as you wish."
+    }
+
+    fun silenceWakeAlarm() {
+        timerEngine.silenceWakeAlarm()
+    }
+
     fun addTimerSeconds(seconds: Long) {
         timerEngine.addExtensionSeconds(seconds)
         val taskId = timerEngine.snapshot.value.taskId

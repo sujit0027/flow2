@@ -231,7 +231,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
 
             {/* Quick Presets */}
             <div className="flex flex-wrap gap-1.5">
-              {[15, 25, 30, 45, 60, 90, 120, 150, 180].map((mins) => {
+              {[1, 5, 15, 25, 30, 45, 60, 90, 120, 150, 180].map((mins) => {
                 const isSelected = minDuration === mins;
                 return (
                   <button
@@ -295,8 +295,8 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                   <button
                     type="button"
                     onClick={() => {
-                      const newMins = Math.max(0, currentMins - 5);
-                      setMinDuration(Math.max(5, currentHours * 60 + newMins));
+                      const newMins = Math.max(0, currentMins - 1);
+                      setMinDuration(Math.max(1, currentHours * 60 + newMins));
                     }}
                     data-testid="decrement_minutes_button"
                     className="p-1 rounded bg-[#1C2420] text-[#98ABA1] hover:text-[#F3F7F5] cursor-pointer"
@@ -307,8 +307,8 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                   <button
                     type="button"
                     onClick={() => {
-                      const newMins = (currentMins + 5) % 60;
-                      const addHours = currentMins + 5 >= 60 ? 1 : 0;
+                      const newMins = (currentMins + 1) % 60;
+                      const addHours = currentMins + 1 >= 60 ? 1 : 0;
                       setMinDuration((currentHours + addHours) * 60 + newMins);
                     }}
                     data-testid="increment_minutes_button"
