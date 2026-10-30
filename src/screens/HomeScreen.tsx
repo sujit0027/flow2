@@ -6,12 +6,10 @@ import {
   Check,
   CheckCircle2,
   Calendar,
-  Download,
 } from 'lucide-react';
 import { useFlowStudy } from '../context/FlowStudyContext';
 import { CATEGORY_CONFIG } from '../types';
 import { formatDurationHMS, formatMinutesHuman } from '../utils/storage';
-import { InstallAppModal } from '../components/InstallAppModal';
 
 interface HomeScreenProps {
   onOpenWallpaperSettings: () => void;
@@ -36,7 +34,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [showCarryForwardDialog, setShowCarryForwardDialog] = useState(false);
-  const [showInstallModal, setShowInstallModal] = useState(false);
 
   const nextPendingTask = tasks.find((t) => !t.isCompleted);
   const subsequentTask = tasks.filter((t) => !t.isCompleted)[1];
@@ -69,15 +66,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         </div>
 
         <div className="flex items-center space-x-1.5">
-          <button
-            onClick={() => setShowInstallModal(true)}
-            data-testid="home_install_app_button"
-            className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl bg-[#10B981]/20 border border-[#10B981]/40 text-[#34D399] hover:bg-[#10B981]/30 text-xs font-semibold transition-all cursor-pointer shadow-sm active:scale-95"
-            title="Install App on Phone"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Install</span>
-          </button>
           <button
             onClick={onOpenWallpaperSettings}
             data-testid="home_wallpaper_button"
@@ -416,12 +404,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           </div>
         </div>
       )}
-
-      {/* Install App Modal */}
-      <InstallAppModal
-        isOpen={showInstallModal}
-        onClose={() => setShowInstallModal(false)}
-      />
     </div>
   );
 };

@@ -15,10 +15,8 @@ import {
   Vibrate,
   Eye,
   Info,
-  Smartphone,
 } from 'lucide-react';
 import { useFlowStudy } from '../context/FlowStudyContext';
-import { InstallAppModal } from '../components/InstallAppModal';
 
 interface SettingsScreenProps {
   onOpenFocusCustomization: () => void;
@@ -49,7 +47,6 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   const [showChecklistModal, setShowChecklistModal] = useState(false);
   const [showResetRoutineDialog, setShowResetRoutineDialog] = useState(false);
   const [showClearAllDialog, setShowClearAllDialog] = useState(false);
-  const [showInstallModal, setShowInstallModal] = useState(false);
 
   const [exportJson, setExportJson] = useState('');
   const [importJson, setImportJson] = useState('');
@@ -88,28 +85,6 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
         </h1>
         <p className="text-xs text-[#98ABA1]">App blocker, ringtones, task flow & themes</p>
       </div>
-
-      {/* Install App on Phone Banner */}
-      <button
-        onClick={() => setShowInstallModal(true)}
-        className="w-full p-4 rounded-2xl bg-gradient-to-r from-[#132F23] to-[#17251E] border border-[#10B981]/50 hover:border-[#10B981] transition-all flex items-center justify-between text-left shadow-lg shadow-[#10B981]/10 cursor-pointer group active:scale-[0.99]"
-      >
-        <div className="flex items-center space-x-3.5">
-          <div className="w-10 h-10 rounded-xl bg-[#10B981] text-black flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition-transform">
-            <Smartphone className="w-5 h-5 font-bold" />
-          </div>
-          <div>
-            <div className="flex items-center space-x-2">
-              <h3 className="text-sm font-bold text-[#F3F7F5]">Install App on Android Phone</h3>
-              <span className="text-[10px] px-1.5 py-0.2 rounded bg-[#10B981]/30 text-[#34D399] font-bold">1-Click</span>
-            </div>
-            <p className="text-xs text-[#98ABA1] mt-0.5">Bina Play Store / PC ke seedha phone me add karein</p>
-          </div>
-        </div>
-        <div className="px-3 py-1.5 rounded-xl bg-[#10B981] text-black text-xs font-bold shrink-0">
-          Install
-        </div>
-      </button>
 
       {/* Row 1: Focus Screen & Wallpapers */}
       <div className="grid grid-cols-2 gap-3">
@@ -502,12 +477,6 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           </div>
         </div>
       )}
-
-      {/* Install App Modal */}
-      <InstallAppModal
-        isOpen={showInstallModal}
-        onClose={() => setShowInstallModal(false)}
-      />
     </div>
   );
 };
