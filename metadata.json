@@ -1,0 +1,8 @@
+{
+  "name": "FlowStudy",
+  "description": "Flexible task-based study planner with compulsory minimum durations, routine customization, and progress tracking.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
