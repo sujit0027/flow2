@@ -207,7 +207,12 @@ export interface TimerSessionSnapshot {
   remainingCompulsorySeconds: number;
   flowOvertimeSeconds: number;
   stintStartTimestamp?: number;
+  isAwaitingContinue?: boolean;
+  awaitingContinueSecondsLeft?: number;
+  isWakeAlarmRinging?: boolean;
+  hasContinuedIntoFlow?: boolean;
 }
+
 
 export interface TaskTransitionCountdownState {
   finishedTaskId: number;

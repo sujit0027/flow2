@@ -146,3 +146,64 @@ export function triggerVibration(pattern: number | number[] = [200, 100, 200]): 
     // Ignore unsupported browser environments
   }
 }
+
+let wakeAlarmIntervalId: number | null = null;
+let isAlarmActive = false;
+
+export function isWakeAlarmActive(): boolean {
+  return isAlarmActive;
+}
+
+export function startWakeAlarm(toneId: string = 'digital_alarm'): void {
+  stopWakeAlarm();
+  isAlarmActive = true;
+  // Play sound immediately
+  playSynthesizedTone(toneId);
+  triggerVibration([500, 200, 500, 200, 500]);
+
+  // Repeat every 2 seconds
+  wakeAlarmIntervalId = window.setInterval(() => {
+    if (!isAlarmActive) {
+      stopWakeAlarm();
+      return;
+    }
+    playSynthesizedTone(toneId);
+    triggerVibration([400, 150, 400]);
+  }, 2000);
+}
+
+export function stopWakeAlarm(): void {
+  isAlarmActive = false;
+  if (wakeAlarmIntervalId !== null) {
+    clearInterval(wakeAlarmIntervalId);
+    wakeAlarmIntervalId = null;
+  }
+}
+
+export function requestNotificationPermission(): void {
+  try {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      if (Notification.permission === 'default') {
+        Notification.requestPermission().catch(() => {});
+      }
+    }
+  } catch {
+    // Unsupported
+  }
+}
+
+export function sendBrowserNotification(title: string, body: string): void {
+  try {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      if (Notification.permission === 'granted') {
+        new Notification(title, {
+          body,
+          icon: '/favicon.ico',
+        });
+      }
+    }
+  } catch {
+    // Notification error or sandboxed
+  }
+}
+

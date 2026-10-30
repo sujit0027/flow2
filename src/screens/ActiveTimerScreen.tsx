@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import {
   X,
+
   EyeOff,
   Pipette,
   Play,
   Pause,
   Check,
   Flame,
+  Bell,
 } from 'lucide-react';
 import { useFlowStudy } from '../context/FlowStudyContext';
 import { CATEGORY_CONFIG } from '../types';
@@ -21,11 +23,14 @@ export const ActiveTimerScreen: React.FC = () => {
     wallpaperConfig,
     togglePlayPause,
     addTimerSeconds,
+    continueInFlow,
+    silenceWakeAlarm,
+    finishAndOpenNextTaskSelection,
     emergencyStopSession,
     closeActiveTimerScreen,
     minimizeTimerScreen,
-    setShowPostTaskModal,
   } = useFlowStudy();
+
 
   const [distractionCount, setDistractionCount] = useState(0);
   const [showEmergencyStopDialog, setShowEmergencyStopDialog] = useState(false);
@@ -150,6 +155,50 @@ export const ActiveTimerScreen: React.FC = () => {
         </button>
       </div>
 
+      {/* Wake Alarm Ringing or Target Reached Alert Banner */}
+      {timerSnapshot.isWakeAlarmRinging && (
+        <div className="relative z-10 w-full max-w-md mx-auto mb-2 p-3 rounded-2xl bg-[#EF4444]/25 border-2 border-[#EF4444] animate-pulse flex items-center justify-between text-left shadow-2xl">
+          <div className="flex items-center space-x-2.5">
+            <Bell className="w-5 h-5 text-[#EF4444] animate-bounce shrink-0" />
+            <div>
+              <div className="text-xs font-black text-[#F3F7F5] uppercase tracking-wider">
+                ⏰ WAKE UP ALARM RINGING!
+              </div>
+              <div className="text-[11px] text-[#FCA5A5]">
+                Task target reached. Tap Continue to work in flow or Finish.
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={silenceWakeAlarm}
+            className="px-2.5 py-1 rounded-lg bg-[#EF4444] text-white text-xs font-bold hover:bg-[#DC2626] cursor-pointer shrink-0 ml-2"
+          >
+            Mute
+          </button>
+        </div>
+      )}
+
+      {timerSnapshot.isAwaitingContinue && !timerSnapshot.isWakeAlarmRinging && (
+        <div className="relative z-10 w-full max-w-md mx-auto mb-2 p-3 rounded-2xl bg-[#132F23] border border-[#10B981] flex items-center justify-between text-left shadow-lg">
+          <div className="flex items-center space-x-2.5">
+            <Flame className="w-5 h-5 text-[#10B981] shrink-0" />
+            <div>
+              <div className="text-xs font-bold text-[#34D399]">
+                Minimum Target Reached! 🎯
+              </div>
+              <div className="text-[11px] text-[#98ABA1]">
+                Tap Continue to study in flow or Finish now
+              </div>
+            </div>
+          </div>
+          <div className="text-right shrink-0 ml-2">
+            <span className="font-mono-digits text-xs font-black text-[#FBBF24] bg-[#1C2420] border border-[#25332B] px-2 py-0.5 rounded-lg inline-block">
+              Wake in {timerSnapshot.awaitingContinueSecondsLeft ?? 30}s
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Center: Title & Motivational Quote & Dynamic Status */}
       <div className="relative z-10 my-auto py-4 flex flex-col items-center max-w-md mx-auto space-y-3">
         {focusCustomization.showTaskTitle && (
@@ -167,17 +216,24 @@ export const ActiveTimerScreen: React.FC = () => {
         {/* Dynamic Status Pill */}
         <div
           className={`inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-[11px] font-bold tracking-wider border shadow-sm ${
-            isMinCompleted
+            timerSnapshot.hasContinuedIntoFlow
               ? 'bg-[#132F23] border-[#10B981] text-[#34D399]'
+              : timerSnapshot.isAwaitingContinue
+              ? 'bg-[#132F23] border-[#10B981] text-[#34D399] animate-pulse'
               : timerSnapshot.isCompulsory
               ? 'bg-[#3A2111] border-[#FB923C]/50 text-[#FDBA74]'
               : 'bg-[#0C2D3E] border-[#38BDF8]/50 text-[#7DD3FC]'
           }`}
         >
-          {isMinCompleted ? (
+          {timerSnapshot.hasContinuedIntoFlow ? (
             <>
               <Flame className="w-3.5 h-3.5 text-[#10B981]" />
-              <span>⚡ IN FLOW STATE — MINIMUM TARGET REACHED</span>
+              <span>⚡ IN FLOW STATE — OVERTIME COUNTING LIVE</span>
+            </>
+          ) : timerSnapshot.isAwaitingContinue ? (
+            <>
+              <Check className="w-3.5 h-3.5 text-[#10B981]" />
+              <span>TARGET COMPLETE — CLICK CONTINUE TO WORK IN FLOW</span>
             </>
           ) : timerSnapshot.isCompulsory ? (
             <span>COMPULSORY MINIMUM: {formatMinutesHuman(Math.floor(minDurationSeconds / 60))}</span>
@@ -190,7 +246,9 @@ export const ActiveTimerScreen: React.FC = () => {
         <div
           data-testid="timer_display_area"
           className={`relative w-64 h-64 my-4 flex items-center justify-center transition-transform duration-500 ${
-            isMinCompleted && timerSnapshot.isRunning ? 'scale-105' : ''
+            (isMinCompleted || timerSnapshot.hasContinuedIntoFlow) && timerSnapshot.isRunning
+              ? 'scale-105'
+              : ''
           }`}
         >
           {focusCustomization.showProgressRing && !focusCustomization.isUltraMinimal && (
@@ -208,7 +266,7 @@ export const ActiveTimerScreen: React.FC = () => {
                 cy="110"
                 r={radius}
                 fill="transparent"
-                stroke={isMinCompleted ? '#10B981' : categoryMeta.accentColor}
+                stroke={isMinCompleted || timerSnapshot.hasContinuedIntoFlow ? '#10B981' : categoryMeta.accentColor}
                 strokeWidth="10"
                 strokeDasharray={circumference}
                 strokeDashoffset={strokeDashoffset}
@@ -226,6 +284,8 @@ export const ActiveTimerScreen: React.FC = () => {
               >
                 {!isMinCompleted
                   ? formatDurationHMS(remainingCompulsory)
+                  : timerSnapshot.hasContinuedIntoFlow
+                  ? `+${formatDurationHMS(flowOvertime)}`
                   : formatDurationHMS(elapsedSeconds)}
               </span>
             )}
@@ -233,12 +293,16 @@ export const ActiveTimerScreen: React.FC = () => {
             {focusCustomization.showMinRemaining && !focusCustomization.isUltraMinimal && (
               <span
                 className={`text-xs mt-1 font-medium ${
-                  isMinCompleted ? 'text-[#34D399]' : 'text-[#98ABA1]'
+                  isMinCompleted || timerSnapshot.hasContinuedIntoFlow
+                    ? 'text-[#34D399]'
+                    : 'text-[#98ABA1]'
                 }`}
               >
                 {!isMinCompleted
                   ? `${formatDurationHMS(elapsedSeconds)} active elapsed`
-                  : `+${formatDurationHMS(flowOvertime)} overtime in flow`}
+                  : timerSnapshot.hasContinuedIntoFlow
+                  ? `${formatDurationHMS(elapsedSeconds)} total time in flow`
+                  : 'Target completed • Ready to flow'}
               </span>
             )}
 
@@ -262,9 +326,9 @@ export const ActiveTimerScreen: React.FC = () => {
       </div>
 
       {/* Bottom Controls */}
-      <div className="relative z-10 max-w-md mx-auto w-full space-y-4">
+      <div className="relative z-10 max-w-md mx-auto w-full space-y-3">
         {/* Extension Chips & Distraction pill */}
-        {!focusCustomization.isUltraMinimal && (
+        {!focusCustomization.isUltraMinimal && !timerSnapshot.isAwaitingContinue && (
           <div className="flex items-center justify-between px-1">
             <div className="flex items-center space-x-1.5 text-xs">
               <span className="text-[#64756B]">Extend:</span>
@@ -291,60 +355,96 @@ export const ActiveTimerScreen: React.FC = () => {
           </div>
         )}
 
-        {/* Play / Pause Big Center Button */}
-        <div className="flex justify-center">
-          <button
-            onClick={togglePlayPause}
-            data-testid="timer_play_pause_button"
-            className={`w-16 h-16 rounded-full flex items-center justify-center shadow-xl transition-all hover:scale-105 active:scale-95 cursor-pointer ${
-              timerSnapshot.isRunning
-                ? 'bg-[#1C2420] border border-[#25332B] text-[#F3F7F5]'
-                : 'bg-[#10B981] text-black'
-            }`}
-            title={timerSnapshot.isRunning ? 'Pause' : 'Resume'}
-          >
-            {timerSnapshot.isRunning ? (
-              <Pause className="w-7 h-7" />
-            ) : (
-              <Play className="w-7 h-7 fill-current ml-1" />
-            )}
-          </button>
-        </div>
+        {/* Center Play/Pause button (shown when in normal mode or continued flow) */}
+        {!timerSnapshot.isAwaitingContinue && (
+          <div className="flex justify-center">
+            <button
+              onClick={togglePlayPause}
+              data-testid="timer_play_pause_button"
+              className={`w-14 h-14 rounded-full flex items-center justify-center shadow-xl transition-all hover:scale-105 active:scale-95 cursor-pointer ${
+                timerSnapshot.isRunning
+                  ? 'bg-[#1C2420] border border-[#25332B] text-[#F3F7F5]'
+                  : 'bg-[#10B981] text-black'
+              }`}
+              title={timerSnapshot.isRunning ? 'Pause' : 'Resume'}
+            >
+              {timerSnapshot.isRunning ? (
+                <Pause className="w-6 h-6" />
+              ) : (
+                <Play className="w-6 h-6 fill-current ml-1" />
+              )}
+            </button>
+          </div>
+        )}
 
-        {/* Action Buttons: Stop / Exit vs Finish Task */}
-        <div className="grid grid-cols-5 gap-2.5">
-          <button
-            onClick={() => setShowEmergencyStopDialog(true)}
-            data-testid="timer_emergency_stop_button"
-            className="col-span-2 py-3 rounded-xl bg-[#1C2420] hover:bg-[#26322C] text-[#98ABA1] hover:text-[#EF4444] font-semibold text-xs border border-[#25332B] transition-colors cursor-pointer"
-          >
-            Stop / Exit
-          </button>
+        {/* Dynamic Action Buttons */}
+        {timerSnapshot.isAwaitingContinue ? (
+          // Mode: Task Minimum Completed! User can click Continue in Flow or Finish Task
+          <div className="space-y-2">
+            <button
+              onClick={continueInFlow}
+              data-testid="timer_continue_flow_button"
+              className="w-full py-3.5 px-4 rounded-xl font-extrabold text-sm flex items-center justify-center space-x-2 bg-[#10B981] hover:bg-[#34D399] text-black transition-all shadow-lg hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+            >
+              <Flame className="w-5 h-5 fill-current" />
+              <span>Continue Working in Flow (No Extension Needed)</span>
+            </button>
 
-          <button
-            onClick={() => {
-              if (isMinCompleted || !timerSnapshot.isCompulsory) {
-                setShowPostTaskModal(true);
-              } else {
-                setShowEmergencyStopDialog(true);
-              }
-            }}
-            disabled={!isMinCompleted && timerSnapshot.isCompulsory}
-            data-testid="timer_finish_button"
-            className={`col-span-3 py-3 rounded-xl font-bold text-xs flex items-center justify-center space-x-1.5 transition-all shadow-lg ${
-              isMinCompleted || !timerSnapshot.isCompulsory
-                ? 'bg-[#10B981] hover:bg-[#34D399] text-black cursor-pointer'
-                : 'bg-[#1C2420] text-[#64756B] border border-[#25332B] cursor-not-allowed opacity-50'
-            }`}
-          >
-            <Check className="w-4 h-4 stroke-[3]" />
-            <span>
-              {isMinCompleted
-                ? 'Finish Task'
-                : `Finish (Min ${formatMinutesHuman(Math.floor(minDurationSeconds / 60))})`}
-            </span>
-          </button>
-        </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => setShowEmergencyStopDialog(true)}
+                data-testid="timer_stop_exit_button"
+                className="py-2.5 rounded-xl bg-[#1C2420] hover:bg-[#26322C] text-[#98ABA1] hover:text-[#EF4444] font-semibold text-xs border border-[#25332B] transition-colors cursor-pointer"
+              >
+                Stop / Exit
+              </button>
+
+              <button
+                onClick={finishAndOpenNextTaskSelection}
+                data-testid="timer_finish_now_button"
+                className="py-2.5 rounded-xl bg-[#132F23] hover:bg-[#1A3E2E] text-[#34D399] font-bold text-xs border border-[#10B981] flex items-center justify-center space-x-1.5 transition-colors cursor-pointer"
+              >
+                <Check className="w-4 h-4 stroke-[3]" />
+                <span>Finish & Next Tasks →</span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          // Mode: Running before minimum or continuing in flow
+          <div className="grid grid-cols-5 gap-2.5">
+            <button
+              onClick={() => setShowEmergencyStopDialog(true)}
+              data-testid="timer_emergency_stop_button"
+              className="col-span-2 py-3 rounded-xl bg-[#1C2420] hover:bg-[#26322C] text-[#98ABA1] hover:text-[#EF4444] font-semibold text-xs border border-[#25332B] transition-colors cursor-pointer"
+            >
+              Stop / Exit
+            </button>
+
+            <button
+              onClick={() => {
+                if (isMinCompleted || timerSnapshot.hasContinuedIntoFlow || !timerSnapshot.isCompulsory) {
+                  finishAndOpenNextTaskSelection();
+                } else {
+                  setShowEmergencyStopDialog(true);
+                }
+              }}
+              disabled={!isMinCompleted && !timerSnapshot.hasContinuedIntoFlow && timerSnapshot.isCompulsory}
+              data-testid="timer_finish_button"
+              className={`col-span-3 py-3 rounded-xl font-bold text-xs flex items-center justify-center space-x-1.5 transition-all shadow-lg ${
+                isMinCompleted || timerSnapshot.hasContinuedIntoFlow || !timerSnapshot.isCompulsory
+                  ? 'bg-[#10B981] hover:bg-[#34D399] text-black cursor-pointer'
+                  : 'bg-[#1C2420] text-[#64756B] border border-[#25332B] cursor-not-allowed opacity-50'
+              }`}
+            >
+              <Check className="w-4 h-4 stroke-[3]" />
+              <span>
+                {isMinCompleted || timerSnapshot.hasContinuedIntoFlow
+                  ? 'Finish Task'
+                  : `Finish (Min ${formatMinutesHuman(Math.floor(minDurationSeconds / 60))})`}
+              </span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Emergency Stop Dialog */}

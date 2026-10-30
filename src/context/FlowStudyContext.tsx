@@ -31,7 +31,16 @@ import {
   loadStored,
   saveStored,
 } from '../utils/storage';
-import { playEventSound, playSynthesizedTone, triggerVibration } from '../utils/audio';
+import {
+  playEventSound,
+  playSynthesizedTone,
+  triggerVibration,
+  startWakeAlarm,
+  stopWakeAlarm,
+  sendBrowserNotification,
+  requestNotificationPermission,
+} from '../utils/audio';
+
 
 interface FlowStudyContextType {
   // Navigation & tabs
@@ -79,10 +88,15 @@ interface FlowStudyContextType {
   moveTaskDown: (task: RoutineTask) => void;
 
   // Timer actions
-  startFocusSession: (task: RoutineTask) => void;
+  startFocusSession: (task: RoutineTask, keepAlarmRinging?: boolean) => void;
   togglePlayPause: () => void;
   addTimerSeconds: (seconds: number) => void;
   finishCurrentTask: (choice?: PostTaskChoice) => void;
+  continueInFlow: () => void;
+  silenceWakeAlarm: () => void;
+  finishAndOpenNextTaskSelection: () => void;
+  finishTaskAndReturnHome: () => void;
+  startUpcomingTaskFromModal: (task: RoutineTask, keepAlarmRinging?: boolean) => void;
   emergencyStopSession: () => void;
   skipCurrentTask: () => void;
   closeActiveTimerScreen: () => void;
@@ -135,7 +149,12 @@ const EMPTY_SNAPSHOT: TimerSessionSnapshot = {
   isMinCompleted: false,
   remainingCompulsorySeconds: 0,
   flowOvertimeSeconds: 0,
+  isAwaitingContinue: false,
+  awaitingContinueSecondsLeft: 30,
+  isWakeAlarmRinging: false,
+  hasContinuedIntoFlow: false,
 };
+
 
 export const FlowStudyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentTab, setCurrentTab] = useState<NavigationTab>('HOME');
@@ -176,6 +195,10 @@ export const FlowStudyProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [timerSnapshot, setTimerSnapshot] = useState<TimerSessionSnapshot>(() =>
     loadStored<TimerSessionSnapshot>(KEYS.TIMER_STATE, EMPTY_SNAPSHOT)
   );
+  const timerSnapshotRef = useRef<TimerSessionSnapshot>(timerSnapshot);
+  useEffect(() => {
+    timerSnapshotRef.current = timerSnapshot;
+  }, [timerSnapshot]);
   const [isTimerScreenOpen, setIsTimerScreenOpen] = useState(false);
   const [isMiniPlayerHidden, setIsMiniPlayerHidden] = useState(false);
 
@@ -249,6 +272,11 @@ export const FlowStudyProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     saveStored(KEYS.TIMER_STATE, timerSnapshot);
   }, [timerSnapshot]);
 
+  // Request notification permission once on mount
+  useEffect(() => {
+    requestNotificationPermission();
+  }, []);
+
   // Screen awake handling
   useEffect(() => {
     if (timerSnapshot.isRunning && settings.keepScreenOn && 'wakeLock' in navigator) {
@@ -271,17 +299,35 @@ export const FlowStudyProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       setTimerSnapshot((prev) => {
         if (!prev.isRunning || prev.taskId === 0) return prev;
 
+        // 1. If awaiting user interaction after hitting minimum target
+        if (prev.isAwaitingContinue && !prev.hasContinuedIntoFlow) {
+          const currentSecondsLeft = prev.awaitingContinueSecondsLeft ?? 30;
+          if (currentSecondsLeft <= 1) {
+            // 30 seconds expired without clicking continue or finish! Start wake alarm
+            if (!prev.isWakeAlarmRinging) {
+              startWakeAlarm();
+            }
+            return {
+              ...prev,
+              awaitingContinueSecondsLeft: 0,
+              isWakeAlarmRinging: true,
+            };
+          }
+          return {
+            ...prev,
+            awaitingContinueSecondsLeft: currentSecondsLeft - 1,
+          };
+        }
+
         const now = Date.now();
         const stintStart = prev.stintStartTimestamp || now;
         const currentStintSeconds = Math.floor((now - stintStart) / 1000);
         const newElapsed = prev.accumulatedActiveSeconds + currentStintSeconds;
 
         const isMinCompleted = newElapsed >= prev.minDurationSeconds && prev.minDurationSeconds > 0;
-        const remainingCompulsory = Math.max(0, prev.minDurationSeconds - newElapsed);
-        const flowOvertime = Math.max(0, newElapsed - prev.minDurationSeconds);
 
-        // Check if just reached minimum
-        if (!prev.isMinCompleted && isMinCompleted) {
+        // 2. Check if just reached minimum duration for the first time
+        if (!prev.isMinCompleted && isMinCompleted && !prev.hasContinuedIntoFlow) {
           playEventSound('TARGET_REACHED', soundConfig);
           if (settings.vibrateOnComplete) {
             triggerVibration([250, 100, 250]);
@@ -292,14 +338,48 @@ export const FlowStudyProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             origin: { y: 0.6 },
             colors: ['#10B981', '#34D399', '#38BDF8'],
           });
+          // Dispatch notification so user watching lecture or in another app is alerted
+          sendBrowserNotification(
+            `FlowStudy: Task Completed! 🎯`,
+            `"${prev.taskTitle}" duration completed! Tap Continue to work in flow, or Finish.`
+          );
+
+          // Freeze at minimum and start 30s countdown before wake alarm
+          return {
+            ...prev,
+            currentElapsedSeconds: prev.minDurationSeconds,
+            accumulatedActiveSeconds: prev.minDurationSeconds,
+            isMinCompleted: true,
+            remainingCompulsorySeconds: 0,
+            flowOvertimeSeconds: 0,
+            isAwaitingContinue: true,
+            awaitingContinueSecondsLeft: 30,
+            isWakeAlarmRinging: false,
+            hasContinuedIntoFlow: false,
+            stintStartTimestamp: undefined,
+          };
         }
 
+        // 3. If user tapped continue, run live overtime in flow
+        if (prev.hasContinuedIntoFlow) {
+          const flowOvertime = Math.max(0, newElapsed - prev.minDurationSeconds);
+          return {
+            ...prev,
+            currentElapsedSeconds: newElapsed,
+            isMinCompleted: true,
+            remainingCompulsorySeconds: 0,
+            flowOvertimeSeconds: flowOvertime,
+          };
+        }
+
+        // 4. Normal countdown before reaching minimum
+        const remainingCompulsory = Math.max(0, prev.minDurationSeconds - newElapsed);
         return {
           ...prev,
           currentElapsedSeconds: newElapsed,
-          isMinCompleted,
+          isMinCompleted: false,
           remainingCompulsorySeconds: remainingCompulsory,
-          flowOvertimeSeconds: flowOvertime,
+          flowOvertimeSeconds: 0,
         };
       });
     }, 1000);
@@ -334,10 +414,14 @@ export const FlowStudyProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   }, [transitionCountdownState]);
 
   // Start focus session
-  const startFocusSession = useCallback((task: RoutineTask) => {
+  const startFocusSession = useCallback((task: RoutineTask, keepAlarmRinging: boolean = false) => {
+    if (!keepAlarmRinging) {
+      stopWakeAlarm();
+    }
     const minSecs = task.minDurationMinutes * 60;
     const extSecs = task.extensionTargetMinutes * 60;
     const accumulated = task.accumulatedDurationSeconds || 0;
+    const isAlreadyMin = accumulated >= minSecs && minSecs > 0;
 
     const snapshot: TimerSessionSnapshot = {
       taskId: task.id,
@@ -350,17 +434,23 @@ export const FlowStudyProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       isRunning: true,
       accumulatedActiveSeconds: accumulated,
       currentElapsedSeconds: accumulated,
-      isMinCompleted: accumulated >= minSecs && minSecs > 0,
+      isMinCompleted: isAlreadyMin,
       remainingCompulsorySeconds: Math.max(0, minSecs - accumulated),
       flowOvertimeSeconds: Math.max(0, accumulated - minSecs),
       stintStartTimestamp: Date.now(),
+      isAwaitingContinue: false,
+      awaitingContinueSecondsLeft: 30,
+      isWakeAlarmRinging: keepAlarmRinging,
+      hasContinuedIntoFlow: isAlreadyMin,
     };
 
     setTimerSnapshot(snapshot);
     setIsTimerScreenOpen(true);
     setIsMiniPlayerHidden(false);
     setTransitionCountdownState(null);
+    setShowPostTaskModal(false);
   }, []);
+
 
   const togglePlayPause = useCallback(() => {
     setTimerSnapshot((prev) => {
@@ -566,7 +656,79 @@ export const FlowStudyProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     [timerSnapshot, tasks, logSession, startFocusSession, autoFlowConfig]
   );
 
+  const continueInFlow = useCallback(() => {
+    stopWakeAlarm();
+    setTimerSnapshot((prev) => {
+      if (prev.taskId === 0) return prev;
+      const baseSeconds =
+        prev.currentElapsedSeconds >= prev.minDurationSeconds
+          ? prev.currentElapsedSeconds
+          : prev.minDurationSeconds;
+      return {
+        ...prev,
+        isRunning: true,
+        isAwaitingContinue: false,
+        awaitingContinueSecondsLeft: 30,
+        isWakeAlarmRinging: false,
+        hasContinuedIntoFlow: true,
+        accumulatedActiveSeconds: baseSeconds,
+        currentElapsedSeconds: baseSeconds,
+        stintStartTimestamp: Date.now(),
+        flowOvertimeSeconds: Math.max(0, baseSeconds - prev.minDurationSeconds),
+      };
+    });
+  }, []);
+
+  const silenceWakeAlarm = useCallback(() => {
+    stopWakeAlarm();
+    setTimerSnapshot((prev) => ({
+      ...prev,
+      isWakeAlarmRinging: false,
+    }));
+  }, []);
+
+  const finishAndOpenNextTaskSelection = useCallback(() => {
+    stopWakeAlarm();
+    setTimerSnapshot((prev) => {
+      if (prev.taskId === 0) return prev;
+      return {
+        ...prev,
+        isRunning: false,
+        stintStartTimestamp: undefined,
+      };
+    });
+    setShowPostTaskModal(true);
+  }, []);
+
+  const finishTaskAndReturnHome = useCallback(() => {
+    stopWakeAlarm();
+    const snap = timerSnapshotRef.current;
+    if (snap.taskId !== 0) {
+      logSession(snap.taskId, snap.currentElapsedSeconds, false);
+    }
+    setTimerSnapshot(EMPTY_SNAPSHOT);
+    setIsTimerScreenOpen(false);
+    setShowPostTaskModal(false);
+    setCurrentTab('HOME');
+  }, [logSession]);
+
+  const startUpcomingTaskFromModal = useCallback(
+    (taskToStart: RoutineTask, keepAlarmRinging: boolean = false) => {
+      if (!keepAlarmRinging) {
+        stopWakeAlarm();
+      }
+      const snap = timerSnapshotRef.current;
+      if (snap.taskId !== 0) {
+        logSession(snap.taskId, snap.currentElapsedSeconds, false);
+      }
+      setShowPostTaskModal(false);
+      startFocusSession(taskToStart, keepAlarmRinging);
+    },
+    [logSession, startFocusSession]
+  );
+
   const emergencyStopSession = useCallback(() => {
+    stopWakeAlarm();
     const currentTaskId = timerSnapshot.taskId;
     const actualElapsed = timerSnapshot.currentElapsedSeconds;
 
@@ -576,6 +738,7 @@ export const FlowStudyProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   }, [timerSnapshot, logSession]);
 
   const skipCurrentTask = useCallback(() => {
+    stopWakeAlarm();
     const currentTaskId = timerSnapshot.taskId;
     const task = tasks.find((t) => t.id === currentTaskId);
     if (task) {
@@ -586,6 +749,7 @@ export const FlowStudyProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setTimerSnapshot(EMPTY_SNAPSHOT);
     setIsTimerScreenOpen(false);
   }, [timerSnapshot, tasks]);
+
 
   const toggleTaskComplete = useCallback(
     (task: RoutineTask) => {
@@ -907,6 +1071,11 @@ export const FlowStudyProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         togglePlayPause,
         addTimerSeconds,
         finishCurrentTask,
+        continueInFlow,
+        silenceWakeAlarm,
+        finishAndOpenNextTaskSelection,
+        finishTaskAndReturnHome,
+        startUpcomingTaskFromModal,
         emergencyStopSession,
         skipCurrentTask,
         closeActiveTimerScreen,
