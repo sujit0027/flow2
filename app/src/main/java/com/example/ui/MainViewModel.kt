@@ -125,6 +125,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _isAutoFlowSettingsOpen = MutableStateFlow(false)
     val isAutoFlowSettingsOpen: StateFlow<Boolean> = _isAutoFlowSettingsOpen.asStateFlow()
 
+    private val _isCelebrationDialogOpen = MutableStateFlow(false)
+    val isCelebrationDialogOpen: StateFlow<Boolean> = _isCelebrationDialogOpen.asStateFlow()
+
     private val _snackMessage = MutableStateFlow<String?>(null)
     val snackMessage: StateFlow<String?> = _snackMessage.asStateFlow()
 
@@ -149,6 +152,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             TimerForegroundService.start(application)
         }
 
+        // Sync AutoFlow preferences with TimerEngine
+        viewModelScope.launch {
+            autoFlowConfig.collect { config ->
+                timerEngine.configureWakeAlarmSettings(config.wakeAlarmMode, config.wakeAlarmDurationSeconds)
+            }
+        }
+
         // Play target reached tone when student reaches compulsory minimum duration
         viewModelScope.launch {
             timerEngine.snapshot.collect { snapshot ->
@@ -159,6 +169,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         SoundEventType.TARGET_REACHED,
                         soundConfig.value
                     )
+                }
+
+                // If wake alarm triggered by 30s expiry
+                if (snapshot.isWakeAlarmRinging) {
+                    val mode = autoFlowConfig.value.wakeAlarmMode
+                    if (mode == "ALARM") {
+                        SoundRingtoneManager.triggerEventSound(
+                            getApplication(),
+                            SoundEventType.NEXT_TASK_ALARM,
+                            soundConfig.value
+                        )
+                        triggerWakeVibration()
+                    } else if (mode == "VIBRATION_ONLY") {
+                        triggerWakeVibration()
+                    }
                 }
             }
         }
@@ -312,8 +337,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     val currentTasks = tasks.value
                     val remainingTasks = currentTasks.filter { !it.isCompleted && it.id != finishedTaskId }
 
-                    if (remainingTasks.isEmpty()) {
-                        _snackMessage.value = "🎉 Fantastic! All scheduled routine tasks completed for today!"
+                    if (remainingTasks.isEmpty() || remainingTasks.none { it.isCompulsory }) {
+                        _isCelebrationDialogOpen.value = true
+                        _snackMessage.value = "🎉 Fantastic! All compulsory routine tasks completed for today!"
                         return@launch
                     }
 
@@ -611,8 +637,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // Auto-Flow & Next Task Sequencing
     fun openAutoFlowSettings() { _isAutoFlowSettingsOpen.value = true }
     fun closeAutoFlowSettings() { _isAutoFlowSettingsOpen.value = false }
+    fun openCelebrationDialog() { _isCelebrationDialogOpen.value = true }
+    fun closeCelebrationDialog() { _isCelebrationDialogOpen.value = false }
+
     fun saveAutoFlowConfig(config: AutoFlowConfig) {
-        viewModelScope.launch { prefsStore.updateAutoFlowConfig(config) }
+        viewModelScope.launch {
+            prefsStore.updateAutoFlowConfig(config)
+            timerEngine.configureWakeAlarmSettings(config.wakeAlarmMode, config.wakeAlarmDurationSeconds)
+        }
     }
 
     // Task & Routine Management

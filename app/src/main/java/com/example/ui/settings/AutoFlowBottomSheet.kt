@@ -23,8 +23,8 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DirectionsRun
 import androidx.compose.material.icons.filled.FastForward
-import androidx.compose.material.icons.filled.HourglassTop
 import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.Sparkles
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -32,6 +32,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -77,6 +79,8 @@ fun AutoFlowBottomSheet(
     var config by remember { mutableStateOf(currentConfig) }
 
     val countdownOptions = listOf(15, 30, 45, 60)
+    val wakeAlarmDurations = listOf(15, 30, 45, 60, 90, 120)
+    val transitionAlertDurations = listOf(10, 20, 30, 45)
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -116,13 +120,13 @@ fun AutoFlowBottomSheet(
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
-                            text = "Next Task Flow & Alarms",
+                            text = "Auto-Flow & Waking Alarms",
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                             color = TextPrimary
                         )
                         Text(
-                            text = "30s sleep-wake alarm & compulsory auto-advance",
+                            text = "30s sleep-wake alarm, modes & celebration screen",
                             style = MaterialTheme.typography.bodySmall,
                             color = TextSecondary
                         )
@@ -155,7 +159,7 @@ fun AutoFlowBottomSheet(
                                 color = TextPrimary
                             )
                             Text(
-                                text = "Only auto-starts compulsory study tasks. If the next task is an optional meal or break, FlowStudy gives you a 30s countdown rather than blindly forcing it.",
+                                text = "Only auto-starts compulsory study tasks after countdown.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = TextSecondary
                             )
@@ -178,7 +182,80 @@ fun AutoFlowBottomSheet(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Setting 2: 30-Second Countdown Window & Sleep Alarm
+            // Setting 2: Wake-Up Alarm Mode Selector (30s Gap Action)
+            FlowCard(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Wake-Up Alarm Behavior (30s Gap)",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary
+                    )
+                    Text(
+                        text = "Jab task complete hone par 30s tak continue na click karein to kya ho:",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextSecondary
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    val modes = listOf(
+                        Triple("ALARM", "🔊 Loud Alarm", "Rings audio wake alarm"),
+                        Triple("VIBRATION_ONLY", "📳 Vibration Only", "Silent strong pulsing alert"),
+                        Triple("OVERTIME_AUTO", "⚡ Auto-Overtime", "Continues flow without alarm"),
+                        Triple("AUTO_NEXT_COMPULSORY", "⏭️ Jump Compulsory", "Auto-starts next task")
+                    )
+
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        modes.chunked(2).forEach { rowModes ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                rowModes.forEach { (key, label, desc) ->
+                                    val isSelected = config.wakeAlarmMode == key
+                                    Surface(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clip(RoundedCornerShape(10.dp))
+                                            .clickable {
+                                                config = config.copy(
+                                                    wakeAlarmMode = key,
+                                                    enableWakeAlarm = key == "ALARM" || key == "VIBRATION_ONLY"
+                                                )
+                                            },
+                                        color = if (isSelected) EmeraldContainer else DarkSurfaceVariant,
+                                        border = androidx.compose.foundation.BorderStroke(
+                                            1.dp,
+                                            if (isSelected) EmeraldPrimary else DarkBorder
+                                        ),
+                                        shape = RoundedCornerShape(10.dp)
+                                    ) {
+                                        Column(modifier = Modifier.padding(10.dp)) {
+                                            Text(
+                                                text = label,
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (isSelected) EmeraldLight else TextPrimary,
+                                                fontSize = 12.sp
+                                            )
+                                            Spacer(modifier = Modifier.height(2.dp))
+                                            Text(
+                                                text = desc,
+                                                color = TextTertiary,
+                                                fontSize = 10.sp
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Setting 3: Customizable Wake-Up Alarm Duration (15s – 120s)
             FlowCard(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(
@@ -186,64 +263,39 @@ fun AutoFlowBottomSheet(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Waking Alarm on 30s Expiry",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = TextPrimary
-                            )
-                            Text(
-                                text = "If you fall asleep while studying or leave your phone idle, a loud wake-up alarm sounds after 30s and auto-starts the next study task.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = TextSecondary
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Switch(
-                            checked = config.ringAlarmOnCountdownExpiry,
-                            onCheckedChange = { config = config.copy(ringAlarmOnCountdownExpiry = it) },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = EmeraldLight,
-                                checkedTrackColor = EmeraldPrimary,
-                                uncheckedThumbColor = TextTertiary,
-                                uncheckedTrackColor = DarkSurfaceVariant
-                            ),
-                            modifier = Modifier.testTag("alarm_on_expiry_switch")
+                        Text(
+                            text = "Wake-Up Alarm Duration",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary
+                        )
+                        Text(
+                            text = "${config.wakeAlarmDurationSeconds}s",
+                            fontWeight = FontWeight.Bold,
+                            color = EmeraldLight,
+                            fontFamily = com.example.ui.theme.JetBrainsMonoFamily
                         )
                     }
-
-                    Spacer(modifier = Modifier.height(14.dp))
-                    Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(DarkBorder))
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    // Countdown duration selection
                     Text(
-                        text = "Decision Window Duration",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = TextPrimary
-                    )
-                    Text(
-                        text = "How long the dialog waits before sounding alarm & auto-starting",
+                        text = "Wake alarm kitni der tak bajta rahega (soye hue user ko jagane ke liye):",
                         style = MaterialTheme.typography.bodySmall,
                         color = TextSecondary
                     )
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        countdownOptions.forEach { seconds ->
-                            val isSelected = config.countdownDurationSeconds == seconds
+                        wakeAlarmDurations.forEach { seconds ->
+                            val isSelected = config.wakeAlarmDurationSeconds == seconds
                             Surface(
                                 modifier = Modifier
                                     .weight(1f)
                                     .clip(RoundedCornerShape(8.dp))
                                     .clickable {
-                                        config = config.copy(countdownDurationSeconds = seconds)
+                                        config = config.copy(wakeAlarmDurationSeconds = seconds)
                                     },
                                 color = if (isSelected) EmeraldContainer else DarkSurfaceVariant,
                                 border = androidx.compose.foundation.BorderStroke(
@@ -253,14 +305,14 @@ fun AutoFlowBottomSheet(
                                 shape = RoundedCornerShape(8.dp)
                             ) {
                                 Box(
-                                    modifier = Modifier.padding(vertical = 10.dp),
+                                    modifier = Modifier.padding(vertical = 8.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
                                         text = "${seconds}s",
                                         fontWeight = FontWeight.Bold,
                                         color = if (isSelected) EmeraldLight else TextSecondary,
-                                        fontSize = 13.sp
+                                        fontSize = 11.sp
                                     )
                                 }
                             }
@@ -271,7 +323,7 @@ fun AutoFlowBottomSheet(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Setting 3: Auto-Skip Optional Breaks when Idle
+            // Setting 4: Next Task Transition Alert Duration
             FlowCard(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(
@@ -279,38 +331,143 @@ fun AutoFlowBottomSheet(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Auto-Skip Breaks if Idle",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = TextPrimary
-                            )
-                            Text(
-                                text = "If you don't explicitly choose to take the scheduled break/meal, automatically skip it and proceed directly to the next compulsory study task.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = TextSecondary
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Switch(
-                            checked = config.autoSkipOptionalBreaksIfIdle,
-                            onCheckedChange = { config = config.copy(autoSkipOptionalBreaksIfIdle = it) },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = EmeraldLight,
-                                checkedTrackColor = EmeraldPrimary,
-                                uncheckedThumbColor = TextTertiary,
-                                uncheckedTrackColor = DarkSurfaceVariant
-                            ),
-                            modifier = Modifier.testTag("auto_skip_breaks_switch")
+                        Text(
+                            text = "Transition Auto-Start Alert Duration",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary
+                        )
+                        Text(
+                            text = "${config.transitionAlarmDurationSeconds}s",
+                            fontWeight = FontWeight.Bold,
+                            color = EmeraldLight,
+                            fontFamily = com.example.ui.theme.JetBrainsMonoFamily
                         )
                     }
+                    Text(
+                        text = "Agle task par jump hone se pehle alarm duration:",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextSecondary
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        transitionAlertDurations.forEach { seconds ->
+                            val isSelected = config.transitionAlarmDurationSeconds == seconds
+                            Surface(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable {
+                                        config = config.copy(transitionAlarmDurationSeconds = seconds)
+                                    },
+                                color = if (isSelected) EmeraldContainer else DarkSurfaceVariant,
+                                border = androidx.compose.foundation.BorderStroke(
+                                    1.dp,
+                                    if (isSelected) EmeraldPrimary else DarkBorder
+                                ),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier.padding(vertical = 8.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "${seconds}s",
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isSelected) EmeraldLight else TextSecondary,
+                                        fontSize = 12.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Setting 5: All Compulsory Tasks Completed Screen Customization
+            FlowCard(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Sparkles,
+                            contentDescription = null,
+                            tint = EmeraldLight,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "🎉 All Tasks Completed Celebration Screen",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary
+                        )
+                    }
+                    Text(
+                        text = "Saare compulsory study tasks poore hone par motivation screen show hoga:",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextSecondary
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Text(
+                        text = "MOTIVATIONAL AFFIRMATION / QUOTE",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = TextTertiary,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    OutlinedTextField(
+                        value = config.celebrationMessage,
+                        onValueChange = { config = config.copy(celebrationMessage = it) },
+                        placeholder = { Text("e.g. Sensational effort! You crushed all study goals today.") },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = EmeraldPrimary,
+                            unfocusedBorderColor = DarkBorder,
+                            focusedTextColor = TextPrimary,
+                            unfocusedTextColor = TextPrimary
+                        ),
+                        shape = RoundedCornerShape(10.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Text(
+                        text = "CELEBRATION WALLPAPER IMAGE URL (OPTIONAL)",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = TextTertiary,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    OutlinedTextField(
+                        value = config.celebrationWallpaperUri,
+                        onValueChange = { config = config.copy(celebrationWallpaperUri = it) },
+                        placeholder = { Text("https://images.unsplash.com/photo-...") },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = EmeraldPrimary,
+                            unfocusedBorderColor = DarkBorder,
+                            focusedTextColor = TextPrimary,
+                            unfocusedTextColor = TextPrimary
+                        ),
+                        shape = RoundedCornerShape(10.dp)
+                    )
                 }
             }
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Test Wake-Up Alarm Button
+            // Test Alarm Button
             OutlinedButton(
                 onClick = onTestAlarm,
                 modifier = Modifier
@@ -333,42 +490,7 @@ fun AutoFlowBottomSheet(
                 )
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
-
-            // Clarification Guide Card
-            Surface(
-                color = DarkSurfaceVariant,
-                shape = RoundedCornerShape(12.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, DarkBorder),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.padding(14.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(imageVector = Icons.Default.DirectionsRun, contentDescription = null, tint = EmeraldLight, modifier = Modifier.size(20.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Summary: How Auto-Start & Sleep Alarm Work",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = TextPrimary
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = "1. When you finish a task, a 30s countdown dialog appears.\n" +
-                                "2. You can choose: 'Take Break/Meal', 'Extend Study (+15m)', or 'Start Next Compulsory Task'.\n" +
-                                "3. If you accidentally fell asleep and do NOT touch the screen for 30s:\n" +
-                                "   • A loud waking alarm rings!\n" +
-                                "   • A wake-up notification is posted.\n" +
-                                "   • The next COMPULSORY study task auto-starts immediately so your routine keeps progressing!",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = TextSecondary,
-                        lineHeight = 18.sp
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
             // Action Buttons
             Row(

@@ -67,6 +67,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.timer.TimerSessionSnapshot
 import com.example.ui.components.formatDurationHMS
 import com.example.ui.home.HomeScreen
+import com.example.ui.home.CompulsoryCelebrationDialog
 import com.example.ui.timer.TaskTransitionDialog
 import com.example.ui.onboarding.OnboardingScreen
 import com.example.ui.progress.ProgressScreen
@@ -122,6 +123,7 @@ fun MainScreen(
     val isAppBlockerOpen by viewModel.isAppBlockerOpen.collectAsStateWithLifecycle()
     val isSoundSettingsOpen by viewModel.isSoundSettingsOpen.collectAsStateWithLifecycle()
     val isAutoFlowSettingsOpen by viewModel.isAutoFlowSettingsOpen.collectAsStateWithLifecycle()
+    val isCelebrationDialogOpen by viewModel.isCelebrationDialogOpen.collectAsStateWithLifecycle()
     val snackMessage by viewModel.snackMessage.collectAsStateWithLifecycle()
     val transitionCountdownState by viewModel.transitionCountdownState.collectAsStateWithLifecycle()
     val isMiniPlayerHidden by viewModel.isMiniPlayerHidden.collectAsStateWithLifecycle()
@@ -274,7 +276,8 @@ fun MainScreen(
                         onResetTodayCompletions = { viewModel.resetTodayCompletions() },
                         onCarryForwardUnfinished = { viewModel.carryForwardUnfinished() },
                         onOpenWallpaperSettings = { viewModel.openWallpaperSettings() },
-                        onOpenFocusCustomization = { viewModel.openFocusCustomization() }
+                        onOpenFocusCustomization = { viewModel.openFocusCustomization() },
+                        onOpenCelebrationDialog = { viewModel.openCelebrationDialog() }
                     )
                 }
 
@@ -421,6 +424,20 @@ fun MainScreen(
                     onCancelPause = { viewModel.onTransitionCancelPause() }
                 )
             }
+
+            // All Compulsory Tasks Completed Motivation & Celebration Dialog
+            if (isCelebrationDialogOpen) {
+                val totalLoggedSecondsToday = todayLogs.sumOf { it.durationSeconds }
+                CompulsoryCelebrationDialog(
+                    tasks = tasks,
+                    todayTotalSeconds = totalLoggedSecondsToday,
+                    autoFlowConfig = autoFlowConfig,
+                    onCustomizeWallpaperAndQuote = {
+                        viewModel.openAutoFlowSettings()
+                    },
+                    onDismiss = { viewModel.closeCelebrationDialog() }
+                )
+            }
         }
     }
 }
@@ -435,17 +452,17 @@ private fun MiniFocusPlayer(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 6.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .border(1.dp, EmeraldPrimary.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
+            .padding(horizontal = 10.dp, vertical = 3.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .border(1.dp, EmeraldPrimary.copy(alpha = 0.45f), RoundedCornerShape(10.dp))
             .clickable { onExpand() }
             .testTag("mini_focus_player"),
-        color = DarkSurfaceVariant,
-        tonalElevation = 6.dp
+        color = DarkSurfaceVariant.copy(alpha = 0.95f),
+        tonalElevation = 4.dp
     ) {
         Row(
             modifier = Modifier
-                .padding(horizontal = 14.dp, vertical = 8.dp)
+                .padding(horizontal = 10.dp, vertical = 5.dp)
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
@@ -453,26 +470,27 @@ private fun MiniFocusPlayer(
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                 Box(
                     modifier = Modifier
-                        .size(10.dp)
+                        .size(8.dp)
                         .background(if (snapshot.isMinCompleted) EmeraldPrimary else snapshot.category.accentColor, CircleShape)
                 )
 
-                Spacer(modifier = Modifier.width(10.dp))
+                Spacer(modifier = Modifier.width(8.dp))
 
                 Column {
                     Text(
                         text = snapshot.taskTitle.ifBlank { "Flow Study" },
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
                         color = TextPrimary,
+                        fontSize = 12.sp,
                         maxLines = 1
                     )
                     Text(
                         text = if (snapshot.isMinCompleted) "⚡ Flow Active (+${formatDurationHMS(snapshot.flowOvertimeSeconds)})"
-                               else "Min: ${formatDurationHMS(snapshot.remainingCompulsorySeconds)} left",
+                               else "-${formatDurationHMS(snapshot.remainingCompulsorySeconds)}",
                         style = MaterialTheme.typography.labelSmall,
                         color = if (snapshot.isMinCompleted) EmeraldLight else TextSecondary,
-                        fontSize = 11.sp
+                        fontSize = 10.sp
                     )
                 }
             }
@@ -481,34 +499,35 @@ private fun MiniFocusPlayer(
                 Text(
                     text = formatDurationHMS(snapshot.currentElapsedSeconds),
                     fontFamily = JetBrainsMonoFamily,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
-                    color = EmeraldLight
+                    color = EmeraldLight,
+                    fontSize = 13.sp
                 )
 
-                Spacer(modifier = Modifier.width(6.dp))
+                Spacer(modifier = Modifier.width(4.dp))
 
                 IconButton(
                     onClick = onTogglePlayPause,
-                    modifier = Modifier.size(36.dp).testTag("mini_player_toggle_play_pause")
+                    modifier = Modifier.size(28.dp).testTag("mini_player_toggle_play_pause")
                 ) {
                     Icon(
                         imageVector = if (snapshot.isRunning) Icons.Default.Pause else Icons.Default.PlayArrow,
                         contentDescription = if (snapshot.isRunning) "Pause" else "Play",
                         tint = EmeraldLight,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(18.dp)
                     )
                 }
 
                 IconButton(
                     onClick = onHide,
-                    modifier = Modifier.size(36.dp).testTag("mini_player_hide_button")
+                    modifier = Modifier.size(28.dp).testTag("mini_player_hide_button")
                 ) {
                     Icon(
                         imageVector = Icons.Default.VisibilityOff,
                         contentDescription = "Hide Countdown (Lecture Mode)",
                         tint = TextTertiary,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(16.dp)
                     )
                 }
             }

@@ -91,6 +91,7 @@ fun HomeScreen(
     onCarryForwardUnfinished: () -> Unit,
     onOpenWallpaperSettings: () -> Unit,
     onOpenFocusCustomization: () -> Unit,
+    onOpenCelebrationDialog: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var showResetDialog by remember { mutableStateOf(false) }
@@ -421,10 +422,16 @@ fun HomeScreen(
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "All planned flexible study tasks have been fulfilled.",
+                                text = "All planned compulsory study tasks have been fulfilled.",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = TextSecondary,
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(14.dp))
+                            PrimaryFlowButton(
+                                text = "🎉 View Motivation & Celebration Screen",
+                                onClick = onOpenCelebrationDialog,
+                                modifier = Modifier.fillMaxWidth()
                             )
                         }
                     }

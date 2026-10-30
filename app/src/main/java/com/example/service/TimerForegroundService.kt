@@ -102,13 +102,17 @@ class TimerForegroundService : Service() {
                     return@launch
                 }
 
-                // Check Milestone Target Sound
+                // Check Milestone Target Sound & Notification
                 if (snapshot.isMinCompleted && !hasTriggeredMilestoneTone) {
                     hasTriggeredMilestoneTone = true
                     SoundRingtoneManager.triggerEventSound(
                         this@TimerForegroundService,
                         SoundEventType.TARGET_REACHED,
                         currentSoundConfig
+                    )
+                    showTaskCompletedNotification(
+                        this@TimerForegroundService,
+                        snapshot.taskTitle
                     )
                 }
 
@@ -285,6 +289,7 @@ class TimerForegroundService : Service() {
         const val ALARM_CHANNEL_ID = "flow_study_alarm_channel"
         const val NOTIFICATION_ID = 1001
         const val ALARM_NOTIFICATION_ID = 1002
+        const val COMPLETED_NOTIFICATION_ID = 1003
 
         const val ACTION_START = "com.example.service.ACTION_START"
         const val ACTION_PAUSE = "com.example.service.ACTION_PAUSE"
@@ -354,6 +359,35 @@ class TimerForegroundService : Service() {
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
 
             manager?.notify(ALARM_NOTIFICATION_ID, builder.build())
+        }
+
+        fun showTaskCompletedNotification(
+            context: Context,
+            taskTitle: String
+        ) {
+            val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+            val openAppIntent = Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                putExtra("OPEN_ACTIVE_TIMER", true)
+            }
+            val pendingIntent = PendingIntent.getActivity(
+                context,
+                102,
+                openAppIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
+            val builder = NotificationCompat.Builder(context, CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_launcher_foreground)
+                .setContentTitle("🎯 Target Reached: $taskTitle")
+                .setContentText("Compulsory duration completed! Tap Continue to work in flow, or Finish.")
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setAutoCancel(true)
+                .setContentIntent(pendingIntent)
+                .setCategory(NotificationCompat.CATEGORY_EVENT)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+
+            manager?.notify(COMPLETED_NOTIFICATION_ID, builder.build())
         }
     }
 }

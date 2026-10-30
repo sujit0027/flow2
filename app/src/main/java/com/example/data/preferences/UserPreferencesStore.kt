@@ -55,7 +55,14 @@ data class AutoFlowConfig(
     val autoSkipOptionalBreaksIfIdle: Boolean = true,
     val alertOnSkippedTask: Boolean = true,
     val notifyNextTaskMinutes: Int = 1,
-    val autoStartNextTask: Boolean = false
+    val autoStartNextTask: Boolean = false,
+    val wakeAlarmDurationSeconds: Int = 30,
+    val transitionAlarmDurationSeconds: Int = 20,
+    val wakeAlarmMode: String = "ALARM", // ALARM, VIBRATION_ONLY, OVERTIME_AUTO, AUTO_NEXT_COMPULSORY
+    val enableWakeAlarm: Boolean = true,
+    val celebrationWallpaperUri: String = "",
+    val celebrationMessage: String = "Sensational effort! You crushed all compulsory study tasks today.",
+    val celebrationShowQuote: Boolean = true
 )
 
 class UserPreferencesStore(private val context: Context) {
@@ -115,6 +122,13 @@ class UserPreferencesStore(private val context: Context) {
         val AUTO_SKIP_OPTIONAL_IF_IDLE = booleanPreferencesKey("auto_skip_optional_if_idle")
         val ALERT_ON_SKIPPED_TASK = booleanPreferencesKey("alert_on_skipped_task")
         val NOTIFY_NEXT_TASK_MINUTES = intPreferencesKey("notify_next_task_minutes")
+        val WAKE_ALARM_DURATION_SECONDS = intPreferencesKey("wake_alarm_duration_seconds")
+        val TRANSITION_ALARM_DURATION_SECONDS = intPreferencesKey("transition_alarm_duration_seconds")
+        val WAKE_ALARM_MODE = stringPreferencesKey("wake_alarm_mode")
+        val ENABLE_WAKE_ALARM = booleanPreferencesKey("enable_wake_alarm")
+        val CELEBRATION_WALLPAPER_URI = stringPreferencesKey("celebration_wallpaper_uri")
+        val CELEBRATION_MESSAGE = stringPreferencesKey("celebration_message")
+        val CELEBRATION_SHOW_QUOTE = booleanPreferencesKey("celebration_show_quote")
     }
 
     val focusCustomization: Flow<FocusScreenCustomization> = context.dataStore.data.map { prefs ->
@@ -186,7 +200,14 @@ class UserPreferencesStore(private val context: Context) {
             autoSkipOptionalBreaksIfIdle = prefs[Keys.AUTO_SKIP_OPTIONAL_IF_IDLE] ?: true,
             alertOnSkippedTask = prefs[Keys.ALERT_ON_SKIPPED_TASK] ?: true,
             notifyNextTaskMinutes = prefs[Keys.NOTIFY_NEXT_TASK_MINUTES] ?: 1,
-            autoStartNextTask = prefs[Keys.AUTO_START_NEXT_TASK] ?: false
+            autoStartNextTask = prefs[Keys.AUTO_START_NEXT_TASK] ?: false,
+            wakeAlarmDurationSeconds = prefs[Keys.WAKE_ALARM_DURATION_SECONDS] ?: 30,
+            transitionAlarmDurationSeconds = prefs[Keys.TRANSITION_ALARM_DURATION_SECONDS] ?: 20,
+            wakeAlarmMode = prefs[Keys.WAKE_ALARM_MODE] ?: "ALARM",
+            enableWakeAlarm = prefs[Keys.ENABLE_WAKE_ALARM] ?: true,
+            celebrationWallpaperUri = prefs[Keys.CELEBRATION_WALLPAPER_URI] ?: "",
+            celebrationMessage = prefs[Keys.CELEBRATION_MESSAGE] ?: "Sensational effort! You crushed all compulsory study tasks today.",
+            celebrationShowQuote = prefs[Keys.CELEBRATION_SHOW_QUOTE] ?: true
         )
     }
 
@@ -260,6 +281,13 @@ class UserPreferencesStore(private val context: Context) {
             prefs[Keys.AUTO_START_NEXT_TASK] = config.autoStartNextTask
             prefs[Keys.ALERT_ON_SKIPPED_TASK] = config.alertOnSkippedTask
             prefs[Keys.NOTIFY_NEXT_TASK_MINUTES] = config.notifyNextTaskMinutes
+            prefs[Keys.WAKE_ALARM_DURATION_SECONDS] = config.wakeAlarmDurationSeconds
+            prefs[Keys.TRANSITION_ALARM_DURATION_SECONDS] = config.transitionAlarmDurationSeconds
+            prefs[Keys.WAKE_ALARM_MODE] = config.wakeAlarmMode
+            prefs[Keys.ENABLE_WAKE_ALARM] = config.enableWakeAlarm
+            prefs[Keys.CELEBRATION_WALLPAPER_URI] = config.celebrationWallpaperUri
+            prefs[Keys.CELEBRATION_MESSAGE] = config.celebrationMessage
+            prefs[Keys.CELEBRATION_SHOW_QUOTE] = config.celebrationShowQuote
         }
     }
 

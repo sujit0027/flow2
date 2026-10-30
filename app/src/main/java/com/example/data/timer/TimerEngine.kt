@@ -189,6 +189,14 @@ class TimerEngine private constructor(context: Context) {
         updateSnapshot()
     }
 
+    fun configureWakeAlarmSettings(mode: String, durationSeconds: Int) {
+        prefs.edit()
+            .putString(KEY_WAKE_ALARM_MODE, mode)
+            .putInt(KEY_WAKE_ALARM_DURATION_SECONDS, durationSeconds)
+            .apply()
+        updateSnapshot()
+    }
+
     private fun restoreSnapshot(): TimerSessionSnapshot {
         val taskId = prefs.getLong(KEY_TASK_ID, 0L)
         if (taskId == 0L) {
@@ -223,14 +231,22 @@ class TimerEngine private constructor(context: Context) {
                 .apply()
         }
 
+        val wakeMode = prefs.getString(KEY_WAKE_ALARM_MODE, "ALARM") ?: "ALARM"
+
         if (isAwaiting && !hasContinued) {
             val reachedTime = prefs.getLong(KEY_TARGET_REACHED_TIMESTAMP, System.currentTimeMillis())
             val secondsSinceReached = ((System.currentTimeMillis() - reachedTime) / 1000L).toInt()
             val remainingAwait = (30 - secondsSinceReached).coerceAtLeast(0)
             awaitingLeft = remainingAwait
-            if (remainingAwait == 0 && !isAlarmRinging) {
-                isAlarmRinging = true
-                prefs.edit().putBoolean(KEY_IS_WAKE_ALARM_RINGING, true).apply()
+            if (remainingAwait == 0) {
+                if (wakeMode == "OVERTIME_AUTO") {
+                    // Silently transition into flow overtime without sounding alarm
+                    continueInFlow()
+                    return restoreSnapshot()
+                } else if (!isAlarmRinging) {
+                    isAlarmRinging = true
+                    prefs.edit().putBoolean(KEY_IS_WAKE_ALARM_RINGING, true).apply()
+                }
             }
         }
 
@@ -295,6 +311,8 @@ class TimerEngine private constructor(context: Context) {
         private const val KEY_TARGET_REACHED_TIMESTAMP = "target_reached_timestamp"
         private const val KEY_IS_WAKE_ALARM_RINGING = "is_wake_alarm_ringing"
         private const val KEY_HAS_CONTINUED_INTO_FLOW = "has_continued_into_flow"
+        private const val KEY_WAKE_ALARM_MODE = "wake_alarm_mode"
+        private const val KEY_WAKE_ALARM_DURATION_SECONDS = "wake_alarm_duration_seconds"
 
         @Volatile
         private var INSTANCE: TimerEngine? = null
