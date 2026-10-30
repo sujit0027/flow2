@@ -22,33 +22,24 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Setup Gradle 9.3.1
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: '9.3.1'
-
-      - name: Prepare Debug Keystore
+      - name: Accept Android Licenses
         run: |
-          if [ -f "debug.keystore.base64" ]; then
-            echo "Decoding debug.keystore from base64..."
-            base64 -d debug.keystore.base64 > debug.keystore
-          else
-            echo "Generating fresh debug.keystore with keytool..."
-            keytool -genkey -v -keystore debug.keystore -alias androiddebugkey -storepass android -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
-          fi
+          touch .env
+          yes | sdkmanager --licenses || true
+
+      - name: Setup Embedded Debug Keystore
+        run: |
+          echo "MIIKVgIBAzCCCgAGCSqGSIb3DQEHAaCCCfEEggntMIIJ6TCCBcAGCSqGSIb3DQEHAaCCBbEEggWtMIIFqTCCBaUGCyqGSIb3DQEMCgECoIIFQDCCBTwwZgYJKoZIhvcNAQUNMFkwOAYJKoZIhvcNAQUMMCsEFAdgX9jo8jUhtXkkzxVxQejPbPyyAgInEAIBIDAMBggqhkiG9w0CCQUAMB0GCWCGSAFlAwQBKgQQ4p7iI+c6eoZTVx2R5Qc70gSCBNDC71zjhkofPINDuwjBSd3H5BEr3KABCQ3IbkJGcqsx2Yk+bFYF2nQ7m0rNliks/otsXyAhtkijaPBQkz2Q2CpTQpQHmlT/AVgAu5Tlq8LZfkSF25/jeZpaQq44gH9FI0EB9tVQu5I+O2Fb2sZxcYSHUEMNwsgVEzNmJFTo3tnefFeHyluT9JXODjtH4yj/jEEY3eftBcjFyVTqTRHR0Vyq7tvkIpds32JsE/eG7jeq0HgGCd00Y8UzBKuyRXyfJwX5MN22c7ztfc4a28RJNJDvPZhKmQAZaSRz1zr12eJm6RjFV7iKcdXChBTh5/Y+baLk3nRUxJtWDBqzpNTmaF7eG6F2UtgluBhPMG/Q/1ODetfQR+OAdhrskcB9EfFvBk6IkmVFEAzf6veW7dwpU2snGmT2ULTEq6+IpMN5DIaYkKIMMceRVAzDfJKnBxvcYjw/cCrChVDqtorv1Ty5Nr484xNaDwDgzoM7GP6rmZL0d/d3g+r438a/ubY4CbLDFnvskppixhs/va5TPY2e2YirH4b6IKMt18ycXLVA0YwUXN6ahz2Amz9NEkY7XKI1wgCuBK5s6RvivK6JJE9pzoCb/lbCq43XSoK2DZMyCJ4cYXMzzjenReQJq0yoBRuPn5nwkc6g/i/5bjwTBCZF8NeFkIwfwg+ajQsdyq4MzjKQA6MWvTS+n38fpLKNnJAPFuZj/IDxWYr1oPKNL5uEb1iDnO2B3nMqUcQWSMMU9D9iM2C1n2UCopTTkhfnJRLx+DeZGPtnm/o0akML0TQfnxIbTk22iwLWid34XYV4Q50+WwBsu6oX2Ks474aasEgUDTiaooebEc8Q8EPbvEONlfh9VbIIbdtQtTMyx69OLrBIvBYvSpvL/DcVGAyPQDZgUjhn3s9gsStFhINnOJtA4rzCxaOC/FhMh3hgfuR7aUBc4C34/M5d/giB4SN3/fEa2j+UL5V9E+CqclJBx7fyCweomyf8TCWb+PEX83bI3WraMJHdVPi+wDvZyeJ9OaNqfnzQlukjzNoB118W1cJZyrco7mPYN3dU+9VrlKCiurFt/d0aiLdDWJQdTf18KkklOVmjDtAy6cV6eTWd3cOdsCCjaEu+zx7IXIhVNUaHDdJopyxBUmJ4ZM3b6+04c5hiMOVHni5J7wBSFJwednPjYEEIjd2atRIcHiN6bmOHtrXMFBtngdmykHtI9vz6CIGnsN1fuIVaqM0lQqSbc4OMhoedmgt3mazdiuP7bPxgYmIQtLpw5LuZ+9oVbMLg9fnWxkp30BLJsPz+XZEJhR0id2nlbGkXqLOyvjPdYOZWs6r0i6eOXM6NiCTc78u7eAGpuPfcjPabituaKGVpTfwfcgWvji5N8Kb9KqtQqJeOrkZCs0Zj4ecZmPj+iLbDonMpHpWn3YNWQPUgONvgbK42crXrA5LdNoU5NenbwZ93XFl1rCGkv1bFyPIkfy0rDHgC3qgW7ZSS8DSWFrkCDMR7Ru6AKEFyWJwty8VzU1tdut6sCFsMge1ruJEQN/OZzboLZFEaMzwqXX+sjBo0ycCTCM/kQiyXp+SYCmJqIaPmXNjOaf8FkDxlW+UdPSpazJkVVPvcSqE3YXfPY63cacrY6eNxV45BEMdEEwi9vHS7knoozzFSMC0GCSqGSIb3DQEJFDEgHh4AYQBuAGQAcgBvAGkAZABkAGUAYgB1AGcAawBlAHkwIQYJKoZIhvcNAQkVMRQEElRpbWUgMTc5MzMyNDkyNzA1MTCCBCEGCSqGSIb3DQEHBqCCBBIwggQOAgEAMIIEBwYJKoZIhvcNAQcBMGYGCSqGSIb3DQEFDTBZMDgGCSqGSIb3DQEFDDArBBQpetz1tIhMUrXoRyc7kVbV2EimPwICJxACASAwDAYIKoZIhvcNAgkFADAdBglghkgBZQMEASoEELBSktMb0es12cQp4Fddf1CAggOQsEdQAvQoNBWpmg2khn4U/NowU78xu38LD6ZRjfViLXAOjAbjh3lvAt/IZmzApbXCi4thBCVSdVVf2bYV1dMdgGrk7NNQ8i9eCPMrtCok5WK+OAzKtbAqetzEAZn6QUWmo6dWSSIE9IyQVFoJzdna3NJPtwwswHrWf9Z6TqGAtxV6xNKBNJUS+J3QmwVEuxjmyrljnQAXqB9K51G7NQoiTXnFDymaSBG3op0zXJROgEk7+iOZ5sLCPNDI5aT49pxfGfNoXUQFZ4eReEZLBBd0KLXV3TfBV9rNNt82NPuRQdqgfqq4RkR8rYn3sXCm5QY7qb0BGTsDb1VFt+c308UcYH0MwT1fePBJiUABi63ys0fJROlskGxaOdJFFxrwF3sJZzZNb/ldCP31arEJj7VmGs64frO1aTBOOXI1aWnPZ1pyhG3LIwhA4bSpavrFRHhl+zM85ko65F1EE4I5CjwsTMU+ORhOACAK5PAU3nT50KEsa1lnVNFO/HriRdI48w3+FC+4reLU4qKoiSHuLdfOzIfRxWQWAVhPHkmrTMrTwm8fWq7da18KKQRy6D9vC0qEwxAIxIIKhYpsw0s16eDH5W/H2FKpmmWfuN/hHamKJEaBgDqum0PmHo6Gn1ZLZAw4Ku3G1EKpiTyqrQj4N0QNU9vNYV12r8EPWHLXVVmC9LmZ7HzNKixJCGDynPoK5aaRfubVEXtJyA4UO+XrTokJprXpZ27MxY+buOCp+WP032kWojVLK8dcLwRLI+YlTLmMVbMQOWS69c6vwAZgB9FcoUjKyMmgv4E3Kjsw+5Ke/r77gGA+Ok0hH0cuW3KvW5UsgooEKkhQbV8CEvuvMJkf53JEEU3eqGAgkkpDPoNZRPtaCYYhDvAFTIsjwjs+PlV5joepN1TJHvnzbTz4jyCidDqqZFv6xbTg/1oRFFk+NeC6jf7/hO7+YfJit5/fDQ1RBXES6MngQa6zCIDCXCEJBAPx3QW6QK6RDyiJxavsGNue514wU4mhMQ0NACO6p/uu75inY1x7PcS3sKECUHzL7lCJBmsGNIi5QRD0KXnj6T8ZhtZEBy7mH1qqMisChtsWWlzDK6j8wHq2tv+IW3XW17VWBGIh7/pdw48UhZZne3McNQoYZaAy/hyltu+uRrteYGnAyowFsZYKp/yCU9I2zsihcW+JOvUMvT1t7SGMNNN1Ir95ybfFcpr3z8UVSnNuME0wMTANBglghkgBZQMEAgEFAAQg0m80njeiagm+iYTJYkqWqqxAH0MW3QGIzbA7i0Fgl8gEFEl6ZpyebiLqe8+yQ2WIeTTqN2zWAgInEA==" | base64 -d > debug.keystore
           ls -la debug.keystore
 
-      - name: Ensure Gradle Wrapper Exists
+      - name: Download Gradle 9.3.1
         run: |
-          gradle wrapper --gradle-version 9.3.1
-          chmod +x gradlew
+          curl -sL https://services.gradle.org/distributions/gradle-9.3.1-bin.zip -o gradle-bin.zip
+          unzip -q gradle-bin.zip
 
-      - name: Build Debug APK with Gradle
+      - name: Build Debug APK
         run: |
-          ./gradlew assembleDebug --stacktrace
+          ./gradle-9.3.1/bin/gradle assembleDebug --stacktrace
 
       - name: Upload Debug APK Artifact
         uses: actions/upload-artifact@v4
